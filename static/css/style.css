@@ -1,0 +1,166 @@
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  margin: 20px;
+}
+
+h1 {
+  margin: 0 0 6px 0;
+  font-size: 22px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 10px;
+}
+
+th,
+td {
+  border: 1px solid #ddd;
+  padding: 3px 4px;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.15;
+}
+
+th {
+  background: #f6f6f6;
+  position: sticky;
+  top: 0;
+}
+
+tr:hover {
+  background: #fafafa;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.tag.up {
+  background: #e6ffed;
+  border: 1px solid #2ecc71;
+  color: #2e7d32;
+}
+
+.tag.down {
+  background: #fff3e6;
+  border: 1px solid #ff9800;
+  color: #e65100;
+}
+
+.tag.trip {
+  background: #ffe6e6;
+  border: 1px solid #e53935;
+  color: #b71c1c;
+}
+
+.footer {
+  margin-top: 12px;
+  color: #666;
+}
+
+.msg {
+  margin-left: 6px;
+  font-size: 16px;
+  color: #555;
+}
+
+.mainboard-info {
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.sensor-line {
+  margin-top: 6px;
+  font-weight: 600;
+  font-family: monospace;
+  background: #f6f6f6;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.label {
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+#global-controls {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.main-container {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 30px;
+  overflow-x: auto;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 15px;
+  white-space: nowrap;
+}
+
+.group-title {
+  font-weight: bold;
+  margin-right: 10px;
+  color: #333;
+}
+
+input[type="number"] {
+  padding: 2px;
+}
+
+.control-group button {
+  padding:2px 5px;
+  font-size: 14px;
+  border:1px solid #ccc;
+  background:#fff;
+  border-radius:4px;
+  cursor:pointer;
+  box-shadow: 2px 2px #f6f6f6;
+}
+
+.control-group button:hover {
+  background:#f3f3f3;
+}
+
+#apply-btn {
+  background:#d1ffd1;
+  border:1px solid #0a0;
+}
+
+.control-group select,
+.control-group input {
+  padding:2px 5px;
+  background: #f6f6f6;
+  border: 1px solid;
+  border-radius: 4px;
+}
+
+.status-container {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  border: 1px solid #ccc;
+  padding: 15px;
+}
+
+.status-section {
+  flex: 1;
+  padding-right: 15px;
+  border-right: 1px solid #eee;
+}
+
+h4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>FD mPMT — Live Monitor</title>
+    <link rel="icon" href="{{ url_for('static', filename='image/favicon.ico') }}" type="image/x-icon">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        window.APP_CONFIG = {
+          refreshMs: {{ refresh_ms }}
+        };
+    </script>
+    <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+</head>
+
+<body>
+    <h1>FD mPMT — Live Monitor</h1>
+
+    <div class="footer">
+        Updated: <span id="updated_at">—</span> | Firmware: <span id="firmware_ver">—</span>
+    </div>
+
+    <div id="mainboard_info" class="mainboard-info"></div>
+
+    <div id="sensor_line" class="sensor-line">
+        Sensors: —
+    </div>
+
+
+    <div class="main-container">
+        <div class="control-group">
+            <span class="group-title">Channel:</span>
+            <select id="ch_select">
+                <option value="all">All</option>
+                {% for ch in channels %}
+                <option value="{{ ch }}">{{ ch }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="control-group">
+            <span class="group-title">HighVoltage:</span>
+
+            <label>Param:</label>
+            <select id="hv_param_select">
+                <option value="Vset">Vset [V]</option>
+                <option value="Thr">Thr [mV]</option>
+            </select>
+
+            <label>Val:</label>
+            <input id="hv_param_value" type="number" step="1" style="width: 70px;">
+
+            <button onclick="hvOn()" class="btn-on">HV ON</button>
+            <button onclick="hvOff()" class="btn-off">HV OFF</button>
+
+            <button id="apply-btn" onclick="setParamHV()">Apply</button>
+        </div>
+
+        <div class="control-group">
+            <span class="group-title">RunControl:</span>
+
+            <label>Param:</label>
+            <select id="rc_param_select">
+                <option value="Rate_Threshold">Rate Threshold</option>
+                <option value="Time_to_Peak">Time to Peak [ns]</option>
+            </select>
+
+            <label>Val:</label>
+            <input id="rc_param_value" type="number" step="1" style="width: 70px;">
+
+            <button id="apply-btn" onclick="setParamRC()">Apply</button>
+        </div>
+
+        <div class="control-group">
+            <span id="msg" class="msg"></span>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Ch</th>
+                <th>Power</th>
+                <th>Enable</th>
+                <th>Trigger</th>
+                <th>Pulser</th>
+                <th>HV</th>
+                <th>Rate [Hz]</th>
+                <th>Rate Thr [Hz]</th>
+                <th>Time to Peak [ns]</th>
+                <th>V [V]</th>
+                <th>Vset [V]</th>
+                <th>I [uA]</th>
+                <th>T [°C]</th>
+                <th>Status</th>
+                <th>Thr [mV]</th>
+                <th>Alarm</th>
+            </tr>
+        </thead>
+
+        <tbody id="tbody"></tbody>
+
+        <tfoot>
+            <tr class="global-controls-row">
+                <td class="label-cell">ALL</td>
+                <td>
+                    <button onclick="rcTurnAll('on')">ON</button>
+                    <button onclick="rcTurnAll('off')">OFF</button>
+                </td>
+                <td>
+                    <button onclick="rcAcqAll('enable')">EN</button>
+                    <button onclick="rcAcqAll('disable')">DIS</button>
+                </td>
+                <td>
+                    <button onclick="rcTrigAll('enable')">EN</button>
+                    <button onclick="rcTrigAll('disable')">DIS</button>
+                </td>
+                <td>
+                    <button onclick="rcPulsAll('enable')">EN</button>
+                    <button onclick="rcPulsAll('disable')">DIS</button>
+                </td>
+                <td>
+                    <button onclick="hvCtrlAll('on')">ON</button>
+                    <button onclick="hvCtrlAll('off')">OFF</button>
+                </td>
+                <td colspan="14"></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="gbody" id="gbody"> </div>
+
+</body>
+</html>
