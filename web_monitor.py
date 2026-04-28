@@ -251,16 +251,26 @@ class Poller(threading.Thread):
 
                     # --- Read HV only if channel is turned ON ---
                     if turn_on:
-                        mon = self.hv.readMonRegisters(slave=ch)
-                        if mon:
-                            voltage = float(mon.get("V")) if mon.get("V") is not None else None
-                            voltage_set = mon.get("Vset")
-                            current = float(mon.get("I")) if mon.get("I") is not None else None
-                            temperature = float(mon.get("T")) if mon.get("T") is not None else None
-                            status_txt = decode_status(mon.get("status"))
-                            alarm = mon.get("alarm")
-                            threshold = mon.get("threshold")
-                            hv_on = mon.get("status") in (0, 2)
+                        try:
+                            mon = self.hv.readMonRegisters(slave=ch)
+                            if mon:
+                                voltage = float(mon.get("V")) if mon.get("V") is not None else None
+                                voltage_set = mon.get("Vset")
+                                current = float(mon.get("I")) if mon.get("I") is not None else None
+                                temperature = float(mon.get("T")) if mon.get("T") is not None else None
+                                status_txt = decode_status(mon.get("status"))
+                                alarm = mon.get("alarm")
+                                threshold = mon.get("threshold")
+                                hv_on = mon.get("status") in (0, 2)
+                        except Exception as e:
+                            # 🧯 Handle Modbus/HV error
+                            print(f"⚠️ HV communication error on channel {ch}: {e}")
+                            status_txt = "⚠️ HV reading ERROR "
+                    else:
+                        rate = None
+                        voltage = voltage_set = current = temperature = None
+                        status_txt = alarm = threshold = rate_up = rate_dn = limit_v = limit_i = limit_t = trip = None
+                        hv_on = None
 
                     row = {
                         "ts": timestamp,
@@ -283,7 +293,6 @@ class Poller(threading.Thread):
                     }
 
                     current_rows[ch] = row
-
                 with data_lock:
                     latest_readings.clear()
                     latest_readings.update(current_rows)
