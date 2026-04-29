@@ -4,9 +4,7 @@ async function refresh() {
         const res = await fetch('/api/latest?html=1');
         const data = await res.json();
         const tbody = document.getElementById('tbody');
-        const gbody = document.getElementById('gbody');
         tbody.innerHTML = '';
-        gbody.innerHTML = '';
 
         data.rows.forEach(row => {
             const tr = document.createElement('tr');
@@ -51,105 +49,84 @@ async function refresh() {
             updateButtonStyles(ch, row);
             });
 
-        const gr = document.createElement('gr');
-
-        gr.innerHTML = `
-            <div class="status-container">
-
-                <section class="status-section">
-                    <h4>Global</h4>
-                    <div class="status-row">
-                        <span class="label">Overcurrent:</span>
-                        <span class="value">${data.overcurrent}</span>
-                    </div>
-                    <div class="status-row">
-                        <span class="label">Pulser [Hz]:</span>
-                        <span class="value">${data.pulser}</span>
-                    </div>
-                    <div class="status-row">
-                        <span class="label">Data in FIFO:</span>
-                        <span class="value">${data.fifo}</span>
-                    </div>
-                    <div class="status-row">
-                        <span class="label">SPI clock frequency [MHz]:</span>
-                        <span class="value">${data.spi_freq.toFixed(3)}</span>
-                    </div>
-                </section>
-
-                <section class="status-section">
-                    <h4>Syncronization</h4>
-                    <div class="status-row">
-                        <span class="label">Tr32:</span>
-                        <span class="value">not received, aligned and in synch - counted: 0</span>
-                    </div>
-                    <div class="status-row">
-                        <span class="label">TagT:</span>
-                        <span class="value">received (parity OK)</span>
-                    </div>
-                </section>
-
-                <section class="status-section">
-                    <h4>Clock</h4>
-                    <div class="status-row">
-                        <span class="label">PLL:</span>
-                        <span class="value">locked and stable</span>
-                    </div>
-                    <div class="status-row">
-                        <span class="label">Cable 1:</span>
-                        <span class="value">not ok, not lost, not found</span>
-                    </div>
-                    <div class="status-row">
-                        <span class="label">Cable 2:</span>
-                        <span class="value">not ok, not lost, not found</span>
-                    </div>
-                    <div class="status-row">
-                        <span class="label">Sources:</span>
-                        <span class="value">quartz - 1</span>
-                    </div>
-                </section>
-
-            </div>
-            `;
-        gbody.appendChild(gr);
 
     } catch (e) {
     console.error('Refresh error:', e);
     }
 }
 
-
-
-
-// plot sensors
+// show sensors data
 async function refreshSensorsLine() {
-    const el = document.getElementById("sensor_line");
+    const el = document.getElementById("sensor-line");
 
     try {
         const res = await fetch('/api/sensors/latest');
         const s = await res.json();
 
-        if (!s || !s.ts) {
+        if (!s) {
             el.innerHTML = "Sensors: no data";
+            return;
+        }
+        el.innerHTML = `
+        <i class="nf nf-fa-wifi"></i>&nbsp;Sensors |
+        <i class="nf nf-md-lightning_bolt"></i>&nbsp;5V:${s.V_5V?.toFixed?.(3) ?? "-"} V |
+        <i class="nf nf-md-lightning_bolt"></i>&nbsp;3.3V:${s.V_3V3?.toFixed?.(3) ?? "-"} V |
+
+        <i class="nf nf-md-power_plug_outline"></i>&nbsp;IA:${s.I_poeA?.toFixed?.(3) ?? "-"} A |
+        <i class="nf nf-md-power_plug_outline"></i>&nbsp;IB:${s.I_poeB?.toFixed?.(3) ?? "-"} A |
+
+        <i class="nf nf-md-lightning_bolt"></i>&nbsp;PA:${s.P_poeA?.toFixed?.(2) ?? "-"} W |
+        <i class="nf nf-md-lightning_bolt"></i>&nbsp;PB:${s.P_poeB?.toFixed?.(2) ?? "-"} W |
+
+        <i class="nf nf-fa-temperature_half"></i>&nbsp;${s.T?.toFixed?.(2) ?? "-"} °C |
+        <i class="nf nf-weather-humidity"></i>&nbsp;${s.H?.toFixed?.(1) ?? "-"} % |
+        <i class="nf nf-md-gauge_full"></i>&nbsp;${s.P?.toFixed?.(1) ?? "-"} hPa
+        `;
+    } catch (e) {
+        el.innerHTML = "Sensors: error";
+    }
+}
+
+// show DAQ data
+async function refreshDAQLine() {
+    const el = document.getElementById("daq-line");
+
+    try {
+        const res = await fetch('/api/daq/latest');
+        const d = await res.json();
+
+        if (!d || d.error) {
+            el.innerHTML = "DAQ: ❌ error";
             return;
         }
 
         el.innerHTML = `
-        📟 Sensors |
-        ⚡ 5V ${s.V_5V?.toFixed?.(3) ?? "-"} V |
-        ⚡ 3.3V ${s.V_3V3?.toFixed?.(3) ?? "-"} V |
+        <i class="nf nf-md-controller_classic"></i>&nbsp;DAQ |
 
-        🔌 IA ${s.I_poeA?.toFixed?.(3) ?? "-"} A |
-        🔌 IB ${s.I_poeB?.toFixed?.(3) ?? "-"} A |
+        Deadtime: ${d.deadtime}% |
 
-        ⚡ PA ${s.P_poeA?.toFixed?.(2) ?? "-"} W |
-        ⚡ PB ${s.P_poeB?.toFixed?.(2) ?? "-"} W |
+        FIFO: ${d.fifo_words} words (${d.fifo_full ? 'FULL' : 'OK'}) |
 
-        🌡 ${s.T?.toFixed?.(2) ?? "-"} °C |
-        💧 ${s.H?.toFixed?.(1) ?? "-"} % |
-        🌪 ${s.P?.toFixed?.(1) ?? "-"} hPa
+        Tr32: ${d.tr32_received ? '✔' : '✖'}
+              (${d.tr32_received
+                  ? (d.tr32_aligned ? 'aligned' : 'NOT aligned')
+                  : 'NO signal'})
+              #${d.tr32_count} |
+
+        TagT: ${d.tagt_received ? '✔' : '✖'}
+              (${d.tagt_received
+                  ? (d.tagt_aligned ? 'aligned' : 'NOT aligned')
+                  : 'NO signal'},
+               ${d.tagt_parity_ok ? 'parity OK' : 'PARITY ERR'}) |
+
+        PLL: ${d.pll_locked ? 'locked' : 'FREE'} and
+             ${d.pll_stable ? 'stable' : 'UNSTABLE'} |
+
+        Clock: ${d.clock_source} (set: ${d.clock_source_set}) - cable ${d.clock_cable} (set: ${d.clock_cable_set})
         `;
+
     } catch (e) {
-        el.innerHTML = "Sensors: ❌ error";
+        el.innerHTML = "DAQ: ❌ error";
     }
 }
 
@@ -445,8 +422,8 @@ async function refreshMainboard() {
 
     if (data.temperature != null) {
         el.innerHTML =
-            `🔌 Power: ${data.power_ok ? "OK" : "NOT OK"} |
-             ⚡ Voltage: ${data.voltage_ok ? "OK" : "NOT OK"}`;
+            `<i class="nf nf-md-power"></i>&nbsp;Power: ${data.power_ok ? "OK" : "NOT OK"} |
+             <i class="nf nf-md-lightning_bolt_circle"></i>&nbsp;Voltage: ${data.voltage_ok ? "OK" : "NOT OK"}`;
     }
 }
 
@@ -460,13 +437,7 @@ setInterval(() => {
   refresh();
   refreshMainboard();
   refreshSensorsLine();
+  refreshDAQLine();
+  getVersion();
   updateFooterTimestamp();
 }, window.APP_CONFIG.refreshMs);
-
-document.addEventListener('DOMContentLoaded', () => {
-  refresh();
-  refreshMainboard();
-  getVersion();
-  refreshSensorsLine();
-  updateFooterTimestamp();
-});

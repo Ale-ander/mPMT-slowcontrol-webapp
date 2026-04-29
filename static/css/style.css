@@ -1,6 +1,11 @@
+@import "https://www.nerdfonts.com/assets/css/webfont.css";
+
 body {
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-  margin: 20px;
+  font-family: 'RobotoMono NF', monospace;
+}
+
+@font-face {
+  font-family: 'RobotoMono NF';
 }
 
 h1 {
@@ -61,6 +66,7 @@ tr:hover {
 .footer {
   margin-top: 12px;
   color: #666;
+  font-size: 14px;
 }
 
 .msg {
@@ -81,6 +87,17 @@ tr:hover {
   background: #f6f6f6;
   padding: 6px 10px;
   border-radius: 6px;
+  font-size: 14px;
+}
+
+.daq-line {
+  margin-top: 6px;
+  font-weight: 600;
+  font-family: monospace;
+  background: #f6f6f6;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
 }
 
 .label {

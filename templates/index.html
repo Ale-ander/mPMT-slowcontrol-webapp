@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>FD mPMT — Live Monitor</title>
+
     <link rel="icon" href="{{ url_for('static', filename='image/favicon.ico') }}" type="image/x-icon">
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,7 +18,7 @@
 </head>
 
 <body>
-    <h1>FD mPMT — Live Monitor</h1>
+    <h1>FD mPMT — Live Monitor&nbsp;<i class="nf nf-md-monitor_dashboard"></i></h1>
 
     <div class="footer">
         Updated: <span id="updated_at">—</span> | Firmware: <span id="firmware_ver">—</span>
@@ -25,10 +26,9 @@
 
     <div id="mainboard_info" class="mainboard-info"></div>
 
-    <div id="sensor_line" class="sensor-line">
-        Sensors: —
-    </div>
+    <div id="sensor-line" class="sensor-line">Sensors: loading...</div>
 
+    <div id="daq-line" class="daq-line">DAQ: loading...</div>
 
     <div class="main-container">
         <div class="control-group">
@@ -51,7 +51,7 @@
             </select>
 
             <label>Val:</label>
-            <input id="hv_param_value" type="number" step="1" style="width: 70px;">
+            <input id="hv_param_value" type="number" step="1" placeholder="Insert value...">
 
             <button onclick="hvOn()" class="btn-on">HV ON</button>
             <button onclick="hvOff()" class="btn-off">HV OFF</button>
@@ -69,7 +69,7 @@
             </select>
 
             <label>Val:</label>
-            <input id="rc_param_value" type="number" step="1" style="width: 70px;">
+            <input id="rc_param_value" type="number" step="1" placeholder="Insert value...">
 
             <button id="apply-btn" onclick="setParamRC()">Apply</button>
         </div>
@@ -130,8 +130,6 @@
             </tr>
         </tfoot>
     </table>
-
-    <div class="gbody" id="gbody"> </div>
 
 </body>
 </html>

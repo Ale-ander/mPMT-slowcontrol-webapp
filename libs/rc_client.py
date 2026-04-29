@@ -33,6 +33,10 @@ class RunControlClient:
     def write(self, address, value):
         self._send_command('write', {"address": address, "value": value})
 
+    def read_sensors(self):
+        resp = self._send_command('read_sensors')
+        return resp['values']
+
     def status(self):
         resp = self._send_command('status')
         return resp
@@ -182,31 +186,6 @@ class RunControlClient:
                 if 1 <= ch <= 19:
                     current &= ~(1 << (ch - 1))
             self.write(58, current)
-
-    # --------------------------
-    # Pulser control functions
-    # --------------------------
-    def enable_pulser(self, channels=None, all_channels=False):
-        """Enable pulser for given channels or all (1–19)."""
-        if all_channels:
-            self.write(59, 0x7FFFF)  # enable all 19 channels
-        elif channels:
-            current = self.read(59)
-            for ch in channels:
-                if 1 <= ch <= 19:
-                    current |= (1 << (ch - 1))
-            self.write(59, current)
-
-    def disable_pulser(self, channels=None, all_channels=False):
-        """Disable pulser for given channels or all (1–19)."""
-        if all_channels:
-            self.write(59, 0)  # disable all
-        elif channels:
-            current = self.read(59)
-            for ch in channels:
-                if 1 <= ch <= 19:
-                    current &= ~(1 << (ch - 1))
-            self.write(59, current)
             
     # --------------------------
     # Print all registers
@@ -429,94 +408,6 @@ class RunControlClient:
         resp = self._send_command("start_process", command_args)
         print("FEB programming started:", resp)
         return resp
-     
-    def process_read_sensors(self, timeout=5, verbose=True):
-        """
-        Run sn.py on the board and return ALL parsed sensor values.
-        """
-
-        # ----------------------------
-        # Check if busy
-        # ----------------------------
-        if self.process_isrunning():
-            raise RuntimeError("Another RC process is running")
-
-        # ----------------------------
-        # Start process
-        # ----------------------------
-        self._send_command("start_process", {
-            "path": "python3",
-            "params": ["/opt/mpmt-board-cli/sensors/sn.py"]
-        })
-
-        full_log = []
-        t0 = time.time()
-
-        # ----------------------------
-        # Read logs LIVE
-        # ----------------------------
-        while self.process_isrunning():
-            time.sleep(0.3)
-
-            chunk = self.read_log()
-
-            if chunk and chunk != "Error":
-                if isinstance(chunk, str):
-                    lines = chunk.splitlines()
-                else:
-                    lines = chunk
-
-                full_log.extend(lines)
-
-                if verbose:
-                    print("\n".join(lines))
-
-            if time.time() - t0 > timeout:
-                raise RuntimeError("Sensor process timeout")
-
-        # final flush
-        chunk = self.read_log()
-        if chunk and chunk != "Error":
-            if isinstance(chunk, str):
-                full_log.extend(chunk.splitlines())
-            else:
-                full_log.extend(chunk)
-
-        if not full_log:
-            raise RuntimeError("No sensor output received")
-
-        # ----------------------------
-        # Parse output
-        # ----------------------------
-        for line in reversed(full_log):
-
-            if not line:
-                continue
-
-            line = line.replace("[stdout]", "").strip()
-            parts = line.split()
-
-            # expect exactly numeric row
-            if len(parts) == 9:
-                try:
-                    values = list(map(float, parts))
-
-                    return {
-                        "V_5V": values[0],
-                        "V_3V3": values[1],
-                        "I_poeA": values[2],
-                        "I_poeB": values[3],
-                        "P_poeA": values[4],
-                        "P_poeB": values[5],
-                        "T_C": values[6],
-                        "P_hPa": values[7],
-                        "H_pct": values[8],
-                    }
-
-                except ValueError:
-                    continue
-
-        raise RuntimeError("Could not parse sensor output")
 
     def read_log(self) -> str:
         """
@@ -527,7 +418,6 @@ class RunControlClient:
             return resp.get("log")
         except Exception:
             return "Error"    
-        
         
     def process_isrunning(self) -> bool:
         """
@@ -828,7 +718,7 @@ class RunControlClient:
             delay = (regval >> shift) & 0xFF
             out[ch] = delay
         return out
-    
+
     # --------------------------
     # FIFO / DMA reset toggles (reg 4)
     # --------------------------

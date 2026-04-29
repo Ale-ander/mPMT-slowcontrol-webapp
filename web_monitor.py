@@ -24,6 +24,7 @@ latest_readings = {}
 latest_sensor_data = {}
 latest_update = None
 data_lock = threading.Lock()
+daq_status = {}
 
 rc_status = {
     "connected": False,
@@ -37,6 +38,79 @@ mainboard_status = {
     "power_ok": None,
     "voltage_ok": None,
 }
+
+
+def read_daq_status(rc):
+    """
+    Read DAQ-related registers from RunControl.
+    Returns dict with deadtime, fifo, tr32, clock info.
+    """
+    try:
+        reg3 = rc.read(3)
+        reg4 = rc.read(4)
+
+        deadtime = round((65535 - rc.read(27)) / 65535 * 100, 2)
+        fifodata = rc.read(43)
+        fifo_full = (reg3 & 0x1) > 0
+
+        # --- TR32 ---
+        tr32_received = not (reg3 & 0x800)
+        tr32_aligned = not (reg3 & 0x400)
+        tr32_count = rc.read(45)
+
+        tagt_received = not (reg3 & 0x2000)
+        tagt_aligned = not (reg3 & 0x1000)
+        tagt_parity_ok = not (reg3 & 0x4000)
+
+        # --- CLOCK ---
+        pll_locked = (reg3 & 0x2) > 0
+        pll_stable = not (reg3 & 0x8000)
+
+        clock_source = "Quartz" if (reg3 & 0x200) > 0 else "Cable"
+        clock_source_set = "Quartz" if (reg4 & 0x400) > 0 else "Cable"
+
+        clock_cable = 2 if (reg3 & 0x100) > 0 else 1
+        clock_cable_set = 2 if (reg4 & 0x800) > 0 else 1
+
+        return {
+            "deadtime": deadtime,
+            "fifo_words": fifodata,
+            "fifo_full": fifo_full,
+
+            "tr32_received": tr32_received,
+            "tr32_aligned": tr32_aligned,
+            "tr32_count": tr32_count,
+
+            "tagt_received": tagt_received,
+            "tagt_aligned": tagt_aligned,
+            "tagt_parity_ok": tagt_parity_ok,
+
+            "pll_locked": pll_locked,
+            "pll_stable": pll_stable,
+
+            "clock_source": clock_source,
+            "clock_source_set": clock_source_set,
+            "clock_cable": clock_cable,
+            "clock_cable_set": clock_cable_set,
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+def alarm_string(alarm_code: int, html: bool = True) -> str:
+    if not isinstance(alarm_code, int):
+        return "none"
+    if alarm_code == 0:
+        return "none"
+    tags = []
+    if alarm_code & 1: tags.append("OV")
+    if alarm_code & 2: tags.append("UV")
+    if alarm_code & 4: tags.append("OC")
+    if alarm_code & 8: tags.append("OT")
+    text = " ".join(tags)
+    if html:
+        return f'<span style="background:#ffb3b3;color:#000;padding:2px 6px;border-radius:6px;font-weight:600">{text}</span>'
+    return text
 
 def read_mainboard_hk(rc):
     """
@@ -67,24 +141,6 @@ def read_mainboard_hk(rc):
             "voltage_ok": None,
             "error": str(e)
         }
-        
-def alarm_string(alarm_code: int, html: bool = True) -> str:
-    '''
-    Decode alarm code into a human-readable string.
-    '''
-    if not isinstance(alarm_code, int):
-        return "none"
-    if alarm_code == 0:
-        return "none"
-    tags = []
-    if alarm_code & 1: tags.append("OV")
-    if alarm_code & 2: tags.append("UV")
-    if alarm_code & 4: tags.append("OC")
-    if alarm_code & 8: tags.append("OT")
-    text = " ".join(tags)
-    if html:
-        return f'<span style="background:#ffb3b3;color:#000;padding:2px 6px;border-radius:6px;font-weight:600">{text}</span>'
-    return text
 
 def clean_hv_info_field(value: str) -> str:
     """
@@ -110,6 +166,7 @@ class Poller(threading.Thread):
         self.interval = max(0.2, float(interval))
         self._stop = threading.Event()
         self._lock = threading.Lock()
+        self._sensor_counter = 0 # counter for sensors readings
 
         # Interfaces
         self.rc = RunControlClient(self.host, self.rc_port)
@@ -199,29 +256,11 @@ class Poller(threading.Thread):
                 # --- Read RC state registers once ---
                 hk = read_mainboard_hk(self.rc)
                 mainboard_status.update(hk)
+                global daq_status
+                daq_status = read_daq_status(self.rc)
 
                 acq_reg = self.rc.read(0)
                 turn_reg = self.rc.read(1)
-                # OVERCURRENT
-                if self.rc.read(2) == 0:
-                    ovc_reg = 'OK'
-                else:
-                    ovc_reg = 'Overcurrent detected'
-                # SPI SPEED
-                spi_speed = self.rc.read(4) >> 19
-                match spi_speed:
-                    case 0: spi_reg = 10.42
-                    case 1: spi_reg = 12.50
-                    case 2: spi_reg = 15.625
-                    case _: spi_reg = 20.83
-                # PULSER
-                try: # if 0 division impossible
-                    pulser_reg = int(1000000 / (self.rc.read(7)))
-                except ZeroDivisionError:
-                    pulser_reg = 0
-                # TODO SYNCHRONIZATION
-                # TODO CLOCK
-                fifo_reg = self.rc.read(43)
                 trig_reg = self.rc.read(58)
                 puls_reg = self.rc.read(59)
 
@@ -250,14 +289,16 @@ class Poller(threading.Thread):
                         rate_th = cleanreg & 0xFFFF
 
                     # --- Read HV only if channel is turned ON ---
+                    voltage = voltage_set = current = temperature =  status_txt = alarm = threshold = None
+                    hv_on = '0'
                     if turn_on:
                         try:
                             mon = self.hv.readMonRegisters(slave=ch)
                             if mon:
-                                voltage = float(mon.get("V")) if mon.get("V") is not None else None
+                                voltage = float(mon.get("V"))
                                 voltage_set = mon.get("Vset")
-                                current = float(mon.get("I")) if mon.get("I") is not None else None
-                                temperature = float(mon.get("T")) if mon.get("T") is not None else None
+                                current = float(mon.get("I"))
+                                temperature = float(mon.get("T"))
                                 status_txt = decode_status(mon.get("status"))
                                 alarm = mon.get("alarm")
                                 threshold = mon.get("threshold")
@@ -266,11 +307,6 @@ class Poller(threading.Thread):
                             # 🧯 Handle Modbus/HV error
                             print(f"⚠️ HV communication error on channel {ch}: {e}")
                             status_txt = "⚠️ HV reading ERROR "
-                    else:
-                        rate = None
-                        voltage = voltage_set = current = temperature = None
-                        status_txt = alarm = threshold = rate_up = rate_dn = limit_v = limit_i = limit_t = trip = None
-                        hv_on = None
 
                     row = {
                         "ts": timestamp,
@@ -289,19 +325,13 @@ class Poller(threading.Thread):
                         "acq_enabled": int(acq_enabled),
                         "trig_enabled": int(trig_enabled),
                         "puls_enabled": int(puls_enabled),
-                        "hv_on": int(hv_on) if hv_on is not None else 0
+                        "hv_on": int(hv_on)
                     }
 
                     current_rows[ch] = row
                 with data_lock:
                     latest_readings.clear()
                     latest_readings.update(current_rows)
-                    single_read.update({
-                        "overcurrent": ovc_reg,
-                        "pulser": pulser_reg,
-                        "fifo": fifo_reg,
-                        "spi_freq": spi_reg,
-                        })
                     latest_update = timestamp
 
             except Exception as e:
@@ -311,18 +341,14 @@ class Poller(threading.Thread):
             # ----------------------------
             # SENSOR READ (every N cycles)
             # ----------------------------
-            if not hasattr(self, "_sensor_counter"):
-                self._sensor_counter = 0
-
             self._sensor_counter += 1
 
-            if self._sensor_counter % 5 == 0:   # every ~5 sec (adjust)
+            if self._sensor_counter == 5:   # every ~5 sec (adjust)
+                self._sensor_counter = 0
                 try:
-                    sens = self.rc.process_read_sensors(verbose=True)
+                    sens = self.rc.read_sensors()
 
                     sensor_row = {
-                        "ts": timestamp,
-
                         "V_5V": sens.get("V_5V"),
                         "V_3V3": sens.get("V_3V3"),
 
@@ -427,6 +453,10 @@ def make_app(channels, poller: Poller):
     def api_sensors_latest():
         with data_lock:
             return jsonify(dict(latest_sensor_data))
+
+    @app.route("/api/daq/latest")
+    def api_daq_latest():
+        return jsonify(daq_status)
 
     @app.route("/api/latest")
     def api_latest():
