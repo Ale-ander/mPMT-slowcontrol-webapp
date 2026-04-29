@@ -230,7 +230,7 @@ class RunControlClient:
                 self.write(chaddr, newval)
                 print(f"Threshold for channel {channel} set to {value}")     
    
-    def set_spi_speed(self, speed: int):
+    def set_spi_speed(self, speed: int, verbose: bool = True):
         """
         Set SPI clock frequency mode in register 4 (bits 19–20).
 
@@ -255,7 +255,8 @@ class RunControlClient:
         reg_val |= (speed & 0b11) << 19
 
         self.write(reg_addr, reg_val)
-        print(f"SPI speed set to {speed} (0=extra slow … 3=fast)")
+        if verbose:
+            print(f"SPI speed set to {speed} (0=extra slow … 3=fast)")
                     
     def print_threshold(self):
         """
@@ -417,7 +418,7 @@ class RunControlClient:
             resp = self._send_command("log", {})
             return resp.get("log")
         except Exception:
-            return "Error"    
+            return "Error"
         
     def process_isrunning(self) -> bool:
         """
@@ -443,7 +444,7 @@ class RunControlClient:
     # --------------------------
     # Pulser control
     # --------------------------
-    def pulser_set_frequency(self, hz: float | int) -> None:
+    def pulser_set_frequency(self, hz: float | int, verbose: bool = True) -> None:
         """
         Set global pulser frequency via register 7.
         - If hz <= 0  -> pulser OFF (write 0)
@@ -461,15 +462,18 @@ class RunControlClient:
 
         if hz <= 0:
             self.write(7, 0)
-            print("Pulser OFF")
+            if verbose:
+                print("Pulser OFF")
         elif hz >= 1_000_000:
             # Keep original behavior: write the given value directly
             self.write(7, int(hz))
-            print("Pulser OFF (raw value ≥ 1e6 written)")
+            if verbose:
+                print("Pulser OFF (raw value ≥ 1e6 written)")
         else:
             period = int(1_000_000 / hz)
             self.write(7, period)
-            print(f"Pulser set to {hz:g} Hz (period={period})")
+            if verbose:
+                print(f"Pulser set to {hz:g} Hz (period={period})")
 
     def pulser_add_subhits(self, pulses: int) -> None:
         """
@@ -545,6 +549,63 @@ class RunControlClient:
         self.write(59, current)
         if changed:
             print(f"Pulser disabled on channels: {changed}")
+
+    # --------------------------
+    # Channel reset enable mask (register 5)
+    # --------------------------
+    def lock_channel(self, channels: list[int] | None = None, all_channels: bool = False) -> None:
+        """
+        Enable channel pulser (bitmask in register 59).
+        - all_channels=True -> enable for all 1..19
+        - channels=[...]    -> enable only those channels
+        """
+        if all_channels:
+            self.write(5, 0x7FFFF)
+            print("Pulser enabled on all channels")
+            return
+
+        if not channels:
+            print("No channels specified")
+            return
+
+        current = self.read(5)
+        changed = []
+        for ch in channels:
+            if 1 <= ch <= 19:
+                mask = 1 << (ch - 1)
+                if not (current & mask):
+                    current |= mask
+                    changed.append(ch)
+        self.write(5, current)
+        if changed:
+            print(f"Pulser enabled on channels: {changed}")
+
+    def free_channel(self, channels: list[int] | None = None, all_channels: bool = False) -> None:
+        """
+        Disable channel pulser (bitmask in register 59).
+        - all_channels=True -> disable for all 1..19
+        - channels=[...]    -> disable only those channels
+        """
+        if all_channels:
+            self.write(5, 0)
+            print("Pulser disabled on all channels")
+            return
+
+        if not channels:
+            print("No channels specified")
+            return
+
+        current = self.read(5)
+        changed = []
+        for ch in channels:
+            if 1 <= ch <= 19:
+                mask = 1 << (ch - 1)
+                if current & mask:
+                    current &= ~mask
+                    changed.append(ch)
+        self.write(5, current)
+        if changed:
+            print(f"Pulser disabled on channels: {changed}")
             
     # --------------------------
     # Ratemeter threshold (regs 46..55, two channels per register)
@@ -579,11 +640,11 @@ class RunControlClient:
                 continue
             reg = (ch - 1) // 2 + 46                         # 46..55
             current = self.read(reg)
-            if ch % 2 == 0:
-                # even channel -> upper 16 bits
+            if (ch % 2) == 0:
+                # odd channel -> upper 16 bits
                 newval = (value << 16) | (current & 0xFFFF)
             else:
-                # odd channel -> lower 16 bits
+                # even channel -> lower 16 bits
                 newval = (current & 0xFFFF0000) | value
             self.write(reg, newval)
             if verbose:
@@ -644,7 +705,7 @@ class RunControlClient:
                 newval = (current & 0xFFF000) | value
             self.write(reg, newval)
             if verbose:
-                print(f"Ch {ch:02d}: time-to-peak ← {value} ({value*8} ns) [reg {reg}]")
+                print(f"Ch {ch:02d}: time-to-peak ← {value} ({value*3.7} ns) [reg {reg}]")
 
     def get_time_to_peak(self) -> dict[int, int]:
         """

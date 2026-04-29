@@ -1,7 +1,13 @@
 @import "https://www.nerdfonts.com/assets/css/webfont.css";
 
+:root {
+    /* Definizione dei tuoi colori */
+    --bg-blue: #031633;
+}
+
 body {
   font-family: 'RobotoMono NF', monospace;
+  background: white;
 }
 
 @font-face {
@@ -9,14 +15,37 @@ body {
 }
 
 h1 {
-  margin: 0 0 6px 0;
-  font-size: 22px;
+  font-size: 30px;
+  justify-content: center;
+  display: flex;
+  background: var(--bg-blue);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 5px;
+}
+
+.status-bar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--bg-blue);
+}
+
+.mainboard-info,
+.footer {
+  margin-left: 6px;
+  font-weight: bold;
+  color: var(--bg-blue);
 }
 
 table {
-  border-collapse: collapse;
   width: 100%;
-  margin-top: 10px;
+  border-collapse: separate;
+  border-spacing: 0;
+
+  margin-top: 6px;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 th,
@@ -29,13 +58,16 @@ td {
 }
 
 th {
-  background: #f6f6f6;
+  background: var(--bg-blue);
   position: sticky;
   top: 0;
+  color: white;
+  text-transform: uppercase;
 }
 
-tr:hover {
-  background: #fafafa;
+tr:hover td {
+    background-color: rgba(0, 212, 255, 0.05);
+    color: black;
 }
 
 .tag {
@@ -63,41 +95,33 @@ tr:hover {
   color: #b71c1c;
 }
 
-.footer {
-  margin-top: 12px;
-  color: #666;
-  font-size: 14px;
-}
-
 .msg {
   margin-left: 6px;
   font-size: 16px;
   color: #555;
 }
 
-.mainboard-info {
+.sensor-line,
+.daq-line,
+.rc-line {
+  background: var(--bg-blue);
+  backdrop-filter: blur(10px);
+  color: white;
+  border-bottom: 1px solid #333;
+  padding: 8px 20px;
+  display: flex;
+  border-radius: 5px;
   margin-top: 8px;
-  font-weight: 600;
 }
 
-.sensor-line {
-  margin-top: 6px;
-  font-weight: 600;
-  font-family: monospace;
-  background: #f6f6f6;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.daq-line {
-  margin-top: 6px;
-  font-weight: 600;
-  font-family: monospace;
-  background: #f6f6f6;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 14px;
+.sensor-line i,
+.sensor-line span.icon,
+.daq-line i,
+.daq-line span.icon,
+.rc-line i,
+.rc-line span.icon {
+    color: #00d4ff;
+    text-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
 }
 
 .label {
@@ -116,6 +140,8 @@ tr:hover {
   align-items: center;
   gap: 30px;
   overflow-x: auto;
+  margin-top: 6px;
+  color: var(--bg-blue);
 }
 
 .control-group {
@@ -129,7 +155,7 @@ tr:hover {
 .group-title {
   font-weight: bold;
   margin-right: 10px;
-  color: #333;
+  color: var(--bg-blue);
 }
 
 input[type="number"] {
@@ -139,7 +165,7 @@ input[type="number"] {
 .control-group button {
   padding:2px 5px;
   font-size: 14px;
-  border:1px solid #ccc;
+  border:1px solid;
   background:#fff;
   border-radius:4px;
   cursor:pointer;
@@ -151,8 +177,9 @@ input[type="number"] {
 }
 
 #apply-btn {
-  background:#d1ffd1;
-  border:1px solid #0a0;
+  background:rgba(0,212,255,0.25);
+  border:1px solid #00d4ff;
+  border-radius:4px;
 }
 
 .control-group select,

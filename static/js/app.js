@@ -32,6 +32,10 @@ async function refresh() {
                     <button id="hv_on_${ch}" onclick="hvCtrl(${ch},'on')">ON</button>
                     <button id="hv_off_${ch}" onclick="hvCtrl(${ch},'off')">OFF</button>
                 </td>
+                <td>
+                    <button id="rst_on_${ch}" onclick="rcRst(${ch},'lock')">LOCKED</button>
+                    <button id="rst_off_${ch}" onclick="rcRst(${ch},'free')">FREE</button>
+                </td>
                 <td>${row.rate_hz ?? ''}</td>
                 <td>${row.rate_th ?? ''}</td>
                 <td>${row.ttp.toFixed(1) ?? ''}</td>
@@ -68,18 +72,18 @@ async function refreshSensorsLine() {
             return;
         }
         el.innerHTML = `
-        <i class="nf nf-fa-wifi"></i>&nbsp;Sensors |
-        <i class="nf nf-md-lightning_bolt"></i>&nbsp;5V:${s.V_5V?.toFixed?.(3) ?? "-"} V |
-        <i class="nf nf-md-lightning_bolt"></i>&nbsp;3.3V:${s.V_3V3?.toFixed?.(3) ?? "-"} V |
+        <i class="nf nf-fa-wifi"></i>&nbsp;Sensors:&nbsp;<span>&nbsp;</span>
+        <i class="nf nf-md-lightning_bolt"></i>&nbsp;5V:${s.V_5V?.toFixed?.(3) ?? "-"} V |&nbsp;
+        <i class="nf nf-md-lightning_bolt"></i>&nbsp;3.3V:${s.V_3V3?.toFixed?.(3) ?? "-"} V |&nbsp;
 
-        <i class="nf nf-md-power_plug_outline"></i>&nbsp;IA:${s.I_poeA?.toFixed?.(3) ?? "-"} A |
-        <i class="nf nf-md-power_plug_outline"></i>&nbsp;IB:${s.I_poeB?.toFixed?.(3) ?? "-"} A |
+        <i class="nf nf-md-power_plug_outline"></i>&nbsp;IA:${s.I_poeA?.toFixed?.(3) ?? "-"} A |&nbsp;
+        <i class="nf nf-md-power_plug_outline"></i>&nbsp;IB:${s.I_poeB?.toFixed?.(3) ?? "-"} A |&nbsp;
 
-        <i class="nf nf-md-lightning_bolt"></i>&nbsp;PA:${s.P_poeA?.toFixed?.(2) ?? "-"} W |
-        <i class="nf nf-md-lightning_bolt"></i>&nbsp;PB:${s.P_poeB?.toFixed?.(2) ?? "-"} W |
+        <i class="nf nf-md-lightning_bolt"></i>&nbsp;PA:${s.P_poeA?.toFixed?.(2) ?? "-"} W |&nbsp;
+        <i class="nf nf-md-lightning_bolt"></i>&nbsp;PB:${s.P_poeB?.toFixed?.(2) ?? "-"} W |&nbsp;
 
-        <i class="nf nf-fa-temperature_half"></i>&nbsp;${s.T?.toFixed?.(2) ?? "-"} °C |
-        <i class="nf nf-weather-humidity"></i>&nbsp;${s.H?.toFixed?.(1) ?? "-"} % |
+        <i class="nf nf-fa-temperature_half"></i>&nbsp;${s.T?.toFixed?.(2) ?? "-"} °C |&nbsp;
+        <i class="nf nf-weather-humidity"></i>&nbsp;${s.H?.toFixed?.(1) ?? "-"} % |&nbsp;
         <i class="nf nf-md-gauge_full"></i>&nbsp;${s.P?.toFixed?.(1) ?? "-"} hPa
         `;
     } catch (e) {
@@ -96,37 +100,58 @@ async function refreshDAQLine() {
         const d = await res.json();
 
         if (!d || d.error) {
-            el.innerHTML = "DAQ: ❌ error";
+            el.innerHTML = "DAQ error";
             return;
         }
 
         el.innerHTML = `
-        <i class="nf nf-md-controller_classic"></i>&nbsp;DAQ |
-
-        Deadtime: ${d.deadtime}% |
-
-        FIFO: ${d.fifo_words} words (${d.fifo_full ? 'FULL' : 'OK'}) |
-
+        <i class="nf nf-fa-database"></i>&nbsp;Data:&nbsp;
+        Deadtime: ${d.deadtime}% -
+        FIFO: ${d.fifo_words} words (${d.fifo_full ? 'FULL' : 'OK'}) |&nbsp;
+        <i class="nf nf-fa-refresh"></i>&nbsp;Timing:&nbsp;
         Tr32: ${d.tr32_received ? '✔' : '✖'}
               (${d.tr32_received
                   ? (d.tr32_aligned ? 'aligned' : 'NOT aligned')
                   : 'NO signal'})
-              #${d.tr32_count} |
-
+              #${d.tr32_count} -
         TagT: ${d.tagt_received ? '✔' : '✖'}
               (${d.tagt_received
                   ? (d.tagt_aligned ? 'aligned' : 'NOT aligned')
                   : 'NO signal'},
-               ${d.tagt_parity_ok ? 'parity OK' : 'PARITY ERR'}) |
-
+               ${d.tagt_parity_ok ? 'parity OK' : 'PARITY ERR'}) |&nbsp;
+        <i class="nf nf-fa-clock"></i>&nbsp;Clock:&nbsp;
         PLL: ${d.pll_locked ? 'locked' : 'FREE'} and
-             ${d.pll_stable ? 'stable' : 'UNSTABLE'} |
-
-        Clock: ${d.clock_source} (set: ${d.clock_source_set}) - cable ${d.clock_cable} (set: ${d.clock_cable_set})
+             ${d.pll_stable ? 'stable' : 'UNSTABLE'} -
+        Sources: ${d.clock_source} (set: ${d.clock_source_set}) - cable ${d.clock_cable} (set: ${d.clock_cable_set})
         `;
 
     } catch (e) {
-        el.innerHTML = "DAQ: ❌ error";
+        el.innerHTML = "DAQ error";
+    }
+}
+
+// show RC data
+async function refreshRCLine() {
+    const el = document.getElementById("rc-line");
+
+    try {
+        const res = await fetch('/api/rc/latest');
+        const r = await res.json();
+
+        if (!r || r.error) {
+            el.innerHTML = "RunControl error";
+            return;
+        }
+
+        el.innerHTML = `
+        <i class="nf nf-md-controller_classic"></i>&nbsp;RunControl:&nbsp;<span>&nbsp;</span>
+        Overcurrent: ${r.overcurrent} |
+        SPI speed: ${r.spi_speed.toFixed(3) ?? ''} MHz |
+        Pulser freq: ${r.pulser_freq ?? ''} Hz
+        `;
+
+    } catch (e) {
+        el.innerHTML = "RunControl error";
     }
 }
 
@@ -141,7 +166,7 @@ async function updateFooterTimestamp() {
         // ---- Timestamp ----
         if (j.updated_at && j.rc.status == "connected") {
             el.textContent = j.updated_at + ' (connected)';
-            el.style.color = 'green';
+            el.style.color = '#00d4ff';
         } else {
             el.textContent = '—';
             el.style.color = 'gray';
@@ -160,6 +185,27 @@ async function updateFooterTimestamp() {
     }
 }
 
+const select = document.getElementById('rc_param_select');
+const input = document.getElementById('rc_param_value');
+const hint = document.getElementById('input_hint');
+
+select.addEventListener('change', function() {
+    if (this.value === 'Spi_speed') {
+        // Applica i vincoli per SPI Speed
+        input.min = 0;
+        input.max = 3;
+        input.placeholder = "Range 0-3";
+        hint.innerHTML = `Only 0 to 3`;
+        hint.style.color = "var(--accent-blue)";
+    } else {
+        // Rimuovi i vincoli per gli altri parametri
+        input.removeAttribute('min');
+        input.removeAttribute('max');
+        input.placeholder = "Value...";
+        hint.innerHTML = "";
+    }
+});
+
 async function getVersion() {
     const el = document.getElementById('firmware_ver');
 
@@ -174,8 +220,8 @@ async function getVersion() {
 
 // --- helper to colorize buttons ---
 function updateButtonStyles(ch, row) {
-  const activeStyle = 'background:#d1ffd1;border:1px solid #0a0;';
-  const inactiveStyle = 'background:#fff;border:1px solid #ccc;';
+  const activeStyle = 'background:rgba(0,212,255,0.25);border:1px solid #00d4ff;border-radius:4px;';
+  const inactiveStyle = 'background:#fff;border:1px solid #ccc;border-radius:4px;';
 
   // POWER
   const turnOn = document.getElementById(`turn_on_${ch}`);
@@ -207,6 +253,14 @@ function updateButtonStyles(ch, row) {
   if (pulsEn && pulsDis) {
     pulsEn.style = row.puls_enabled ? activeStyle : inactiveStyle;
     pulsDis.style = row.puls_enabled === false ? activeStyle : inactiveStyle;
+  }
+
+  // RST
+  const pulsLock = document.getElementById(`rst_on_${ch}`);
+  const pulsFree = document.getElementById(`rst_off_${ch}`);
+  if (pulsLock && pulsFree) {
+    pulsLock.style = row.rst_enabled ? activeStyle : inactiveStyle;
+    pulsFree.style = row.rst_enabled === false ? activeStyle : inactiveStyle;
   }
 
   // HV
@@ -277,6 +331,7 @@ async function hvOn() {
     msg.textContent = 'Error: ' + e.message;
   }
 }
+
 async function hvOff() {
   const ch = getChosenChannelForControls();
   const msg = document.getElementById('msg');
@@ -350,6 +405,21 @@ async function rcPuls(ch, action) {
   }
 }
 
+async function rcRst(ch, action) {
+  try {
+    const res = await fetch('/api/rc/rst', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({channel: ch, action})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    console.log(`${action} sent to ch ${ch}`);
+  } catch(e) {
+    alert('PULSER error: ' + e.message);
+  }
+}
+
 async function hvCtrl(ch, state) {
   try {
     const res = await fetch('/api/hv/power', {
@@ -364,6 +434,7 @@ async function hvCtrl(ch, state) {
     alert('HV error: ' + e.message);
   }
 }
+
 async function rcTurnAll(action) {
   if (!confirm(`Are you sure you want to TURN ${action.toUpperCase()} all channels?`)) return;
   await fetch('/api/rc/turn_all', {
@@ -375,7 +446,7 @@ async function rcTurnAll(action) {
 }
 
 async function rcAcqAll(action) {
-  if (!confirm(`Are you sure you want to ACQ ${action.toUpperCase()} all channels?`)) return;
+  if (!confirm(`Are you sure you want to ENABLE ${action.toUpperCase()} all channels?`)) return;
   await fetch('/api/rc/acq_all', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -385,7 +456,7 @@ async function rcAcqAll(action) {
 }
 
 async function rcTrigAll(action) {
-  if (!confirm(`Are you sure you want to TRIGGER ${action.toUpperCase()} all channels?`)) return;
+  if (!confirm(`Are you sure you want to set TRIGGER ${action.toUpperCase()} all channels?`)) return;
   await fetch('/api/rc/trigger_all', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -395,7 +466,7 @@ async function rcTrigAll(action) {
 }
 
 async function rcPulsAll(action) {
-  if (!confirm(`Are you sure you want to PULSER ${action.toUpperCase()} all channels?`)) return;
+  if (!confirm(`Are you sure you want to set PULSER ${action.toUpperCase()} all channels?`)) return;
   await fetch('/api/rc/pulser_all', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -407,6 +478,16 @@ async function rcPulsAll(action) {
 async function hvCtrlAll(action) {
   if (!confirm(`Are you sure you want to HV ${action.toUpperCase()} all channels?`)) return;
   await fetch('/api/hv/all', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ action })
+  });
+  refresh();
+}
+
+async function rcRstAll(action) {
+  if (!confirm(`Are you sure you want to ${action.toUpperCase()} all channels?`)) return;
+  await fetch('/api/rc/rst_all', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ action })
@@ -438,6 +519,7 @@ setInterval(() => {
   refreshMainboard();
   refreshSensorsLine();
   refreshDAQLine();
+  refreshRCLine();
   getVersion();
   updateFooterTimestamp();
 }, window.APP_CONFIG.refreshMs);

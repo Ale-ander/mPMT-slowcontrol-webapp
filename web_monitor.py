@@ -9,7 +9,6 @@ import threading
 import time
 from types import SimpleNamespace
 from contextlib import closing
-from unittest import case
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
@@ -25,6 +24,7 @@ latest_sensor_data = {}
 latest_update = None
 data_lock = threading.Lock()
 daq_status = {}
+runcontrol_status = {}
 
 rc_status = {
     "connected": False,
@@ -39,6 +39,34 @@ mainboard_status = {
     "voltage_ok": None,
 }
 
+
+def read_rc_status(rc):
+    """
+    Read RC-related registers from RunControl.
+    Returns dict with deadtime, fifo, tr32, clock info.
+    """
+    try:
+        ovc_reg = 'Ok' if rc.read(2) == 0 else 'Overcurrent detected!'
+        spi_speed_b = rc.read(4) >> 19
+        try:
+            pulser_reg = 1000000 / rc.read(7)
+        except ZeroDivisionError:
+            pulser_reg = 0
+
+        match spi_speed_b:
+            case 0: spi_speed = 10.42
+            case 1: spi_speed = 12.5
+            case 2: spi_speed = 15.625
+            case _: spi_speed = 20.83
+
+        return {
+            "overcurrent": ovc_reg,
+            "spi_speed": spi_speed,
+            "pulser_freq": pulser_reg,
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
 
 def read_daq_status(rc):
     """
@@ -179,7 +207,7 @@ class Poller(threading.Thread):
         return [int(channel)]
 
     # ---------- Control operations (thread-safe) ----------
-    def set_param(self, channel, param: str, value):
+    def set_param_hv(self, channel, param: str, value):
         p = (param or '').strip().lower()
         with self._lock:
             for ch in self._iter_targets(channel):
@@ -192,24 +220,25 @@ class Poller(threading.Thread):
                     elif p == "thr":
                         v = int(max(0, min(4095, int(value))))
                         self.hv.setThreshold(v)
-                    elif p == "rate_threshold":
-                        v = int(max(0, min(65535, int(value))))
-                        chaddress = math.floor(ch / 2) + 46
-                        cleanreg = self.rc.read(chaddress)
-                        if channel % 2 == 0:
-                            self.rc.write(chaddress, (v << 16) | (cleanreg & 0xFFFF))
-                        else:
-                            self.rc.write(chaddress, (cleanreg & 0xFFFF0000) | v)
-                    elif p == "time_to_peak":
-                        v = round((max(0, min(14745, int(value))))/3.7)
-                        chaddress = math.floor((ch-1) / 2) + 28
-                        cleanreg = self.rc.read(chaddress)
-                        if channel % 2 == 0:
-                            self.rc.write(chaddress, (cleanreg & 0xFFF000) | v)
-                        else:
-                            self.rc.write(chaddress, (v << 12) | (cleanreg & 0xFFF))
                 except Exception:       # swallow per-channel errors to continue others
                     pass
+
+    def set_param_rc(self, channel, param: str, value):
+        p = (param or '').strip().lower()
+        with self._lock:
+            for ch in self._iter_targets(channel):
+                try:
+                    if p == "rate_threshold":
+                        self.rc.set_rate_threshold(value, [ch], verbose=False)
+                    elif p == "time_to_peak":
+                        self.rc.set_time_to_peak(round(value/3.7), [ch], verbose=True)
+                    elif p == "pulser_frequency":
+                        self.rc.pulser_set_frequency(value, verbose=False)
+                    elif p == "spi_speed":
+                        self.rc.set_spi_speed(value, verbose=False)
+                except Exception:
+                    pass
+        return
 
     def power(self, channel, on: bool):
         with self._lock:
@@ -225,8 +254,7 @@ class Poller(threading.Thread):
 
     # ---------- Polling loop ----------
     def run(self):
-        global latest_update
-        global single_read
+        global latest_update, single_read
 
         while not self._stop.is_set():
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -256,11 +284,13 @@ class Poller(threading.Thread):
                 # --- Read RC state registers once ---
                 hk = read_mainboard_hk(self.rc)
                 mainboard_status.update(hk)
-                global daq_status
+                global daq_status, runcontrol_status
                 daq_status = read_daq_status(self.rc)
+                runcontrol_status = read_rc_status(self.rc)
 
                 acq_reg = self.rc.read(0)
                 turn_reg = self.rc.read(1)
+                rst_reg = self.rc.read(5)
                 trig_reg = self.rc.read(58)
                 puls_reg = self.rc.read(59)
 
@@ -271,17 +301,18 @@ class Poller(threading.Thread):
                     acq_enabled = bool(acq_reg & mask)
                     trig_enabled = bool(trig_reg & mask)
                     puls_enabled = bool(puls_reg & mask)
+                    rst_enabled = bool(rst_reg & mask)
 
                     rate = self.rc.read(ch + 7)
 
-                    chaddress = math.floor((ch-1) / 2) + 28
+                    chaddress = (ch - 1) // 2 + 28
                     cleanreg = self.rc.read(chaddress)
                     if ch % 2 == 0:
                         ttp = float(cleanreg & 0xFFF)
                     else:
                         ttp = float((cleanreg & 0xFFF000) >> 12)
 
-                    chaddress = math.floor(ch / 2) + 46
+                    chaddress = (ch - 1) // 2 + 46  # 46..55
                     cleanreg = self.rc.read(chaddress)
                     if ch % 2 == 0:
                         rate_th = (cleanreg & 0xFFFF0000) >> 16
@@ -304,7 +335,6 @@ class Poller(threading.Thread):
                                 threshold = mon.get("threshold")
                                 hv_on = mon.get("status") in (0, 2)
                         except Exception as e:
-                            # 🧯 Handle Modbus/HV error
                             print(f"⚠️ HV communication error on channel {ch}: {e}")
                             status_txt = "⚠️ HV reading ERROR "
 
@@ -325,6 +355,7 @@ class Poller(threading.Thread):
                         "acq_enabled": int(acq_enabled),
                         "trig_enabled": int(trig_enabled),
                         "puls_enabled": int(puls_enabled),
+                        "rst_enabled": int(rst_enabled),
                         "hv_on": int(hv_on)
                     }
 
@@ -428,12 +459,16 @@ class Poller(threading.Thread):
     def get_Firmwarever(self):
         date = str(hex(self.rc.read(61))[2:])
         ver = str(hex(self.rc.read(104)))
-        return {'version': f'v{ver[2]}.{int(ver[3:5])}.{int(ver[5:], 16)}',
+        try:
+            return {'version': f'v{ver[2]}.{int(ver[3:5])}.{int(ver[5:], 16)}',
                 'date': f'{date[6:]}-{date[4:6]}-{date[:4]}'}
+        except ValueError:
+            return {'version': 'v0.0.0', 'date': '01-01-1970'}
+
 # -----------------------------------------------------------------------------
 # Flask app (HTML + JSON + control endpoints)
 # -----------------------------------------------------------------------------
-def make_app(channels, poller: Poller):
+def make_app(channels, poller: Poller, host):
     app = Flask(__name__)
 
     @app.route("/")
@@ -442,7 +477,8 @@ def make_app(channels, poller: Poller):
         return render_template(
             "index.html",
             refresh_ms=refresh_ms,
-            channels=channels
+            channels=channels,
+            ip=host
         )
 
     @app.route("/api/mainboard")
@@ -457,6 +493,10 @@ def make_app(channels, poller: Poller):
     @app.route("/api/daq/latest")
     def api_daq_latest():
         return jsonify(daq_status)
+
+    @app.route("/api/rc/latest")
+    def api_rc_latest():
+        return jsonify(runcontrol_status)
 
     @app.route("/api/latest")
     def api_latest():
@@ -500,6 +540,7 @@ def make_app(channels, poller: Poller):
                 "acq_enabled": bool(r.get("acq_enabled")),
                 "trig_enabled": bool(r.get("trig_enabled")),
                 "puls_enabled": bool(r.get("puls_enabled")),
+                "rst_enabled": bool(r.get("rst_enabled")),
                 "hv_on": bool(r.get("hv_on")),
             })
 
@@ -543,7 +584,7 @@ def make_app(channels, poller: Poller):
         except Exception:
             return jsonify({"error": "Invalid value"}), 400
         try:
-            poller.set_param("all" if channel == "all" else int(channel), str(param), v)
+            poller.set_param_hv("all" if channel == "all" else int(channel), str(param), v)
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
         return jsonify({"ok": True, "message": f"{param}={int(v)} applied to {channel}"}), 200
@@ -584,11 +625,11 @@ def make_app(channels, poller: Poller):
         if param is None or value is None:
             return jsonify({"error": "Missing param or value"}), 400
         try:
-            v = float(value)
+            v = int(value)
         except Exception:
             return jsonify({"error": "Invalid value"}), 400
         try:
-            poller.set_param("all" if channel == "all" else int(channel), str(param), v)
+            poller.set_param_rc("all" if channel == "all" else int(channel), str(param), v)
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
         return jsonify({"ok": True, "message": f"{param}={int(v)} applied to {channel}"}), 200
@@ -669,6 +710,23 @@ def make_app(channels, poller: Poller):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+    @app.post("/api/rc/rst")
+    def api_rc_rst():
+        data = request.get_json(silent=True) or {}
+        channel = data.get("channel")
+        action = (data.get("action") or "").lower()
+        if action not in ("lock", "free"):
+            return jsonify({"error": "action must be 'lock' or 'free'"}), 400
+        try:
+            with poller._lock:
+                if action == "lock":
+                    poller.rc.lock_channel([int(channel)])
+                else:
+                    poller.rc.free_channel([int(channel)])
+            return jsonify({"ok": True, "message": f"TRIGGER {action.upper()} for channel {channel}"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     @app.post("/api/rc/turn_all")
     def api_rc_turn_all():
         data = request.get_json(silent=True) or {}
@@ -725,6 +783,19 @@ def make_app(channels, poller: Poller):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+    @app.post("/api/rc/rst_all")
+    def api_rc_rst_all():
+        data = request.get_json(silent=True) or {}
+        action = (data.get("action") or "").lower()
+        try:
+            with poller._lock:
+                reg_val = 0x7FFFF if action == "lock" else 0x0
+                poller.rc.write(5, reg_val)
+            print(f"[BLOCK] ALL channels -> {action.upper()}")
+            return jsonify({"ok": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     return app
 
 # -----------------------------------------------------------------------------
@@ -767,17 +838,17 @@ if __name__ == "__main__":
     poller.start()
 
     # Flask app
-    app = make_app(channels, poller)
+    app = make_app(channels, poller, args.host)
 
-    print(f"\n🌐 Web UI: http://localhost:{port}/")
-    print(f"🔁 Poll   : every {args.interval:.2f} s | channels: {channels}\n")
+    print(f"\nWeb UI: http://localhost:{args.server_port}/")
+    print(f"Poll: every {args.interval:.2f} s | channels: {channels}\n")
 
     try:
         app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
     except KeyboardInterrupt:
         pass
     finally:
-        print("🛑 Stopping poller...")
+        print("Stopping poller...")
         poller.stop()
         time.sleep(0.5)
-        print("✅ Bye.")
+        print("Bye.")

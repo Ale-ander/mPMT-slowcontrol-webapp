@@ -20,11 +20,13 @@
 <body>
     <h1>FD mPMT — Live Monitor&nbsp;<i class="nf nf-md-monitor_dashboard"></i></h1>
 
-    <div class="footer">
-        Updated: <span id="updated_at">—</span> | Firmware: <span id="firmware_ver">—</span>
-    </div>
+    <div class="status-bar-container">
+        <div class="footer">
+            Updated: <span id="updated_at">—</span> | Firmware: <span id="firmware_ver">—</span> | IP: {{ ip }}
+        </div>
 
-    <div id="mainboard_info" class="mainboard-info"></div>
+        <div id="mainboard_info" class="mainboard-info"></div>
+    </div>
 
     <div id="sensor-line" class="sensor-line">Sensors: loading...</div>
 
@@ -66,17 +68,21 @@
             <select id="rc_param_select">
                 <option value="Rate_Threshold">Rate Threshold</option>
                 <option value="Time_to_Peak">Time to Peak [ns]</option>
+                <option value="Pulser_frequency">Pulser Frequency [Hz]</option>
+                <option value="Spi_speed">Spi speed [0..3]</option>
             </select>
+
 
             <label>Val:</label>
             <input id="rc_param_value" type="number" step="1" placeholder="Insert value...">
 
+            <span id="input_hint" class="hint"></span>
+
             <button id="apply-btn" onclick="setParamRC()">Apply</button>
         </div>
 
-        <div class="control-group">
-            <span id="msg" class="msg"></span>
-        </div>
+        <span id="msg" class="msg"></span>
+
     </div>
 
     <table>
@@ -88,8 +94,9 @@
                 <th>Trigger</th>
                 <th>Pulser</th>
                 <th>HV</th>
+                <th>Block</th>
                 <th>Rate [Hz]</th>
-                <th>Rate Thr [Hz]</th>
+                <th>Rate Threshold [Hz]</th>
                 <th>Time to Peak [ns]</th>
                 <th>V [V]</th>
                 <th>Vset [V]</th>
@@ -126,10 +133,15 @@
                     <button onclick="hvCtrlAll('on')">ON</button>
                     <button onclick="hvCtrlAll('off')">OFF</button>
                 </td>
+                <td>
+                    <button onclick="rcRstAll('lock')">LOCKED</button>
+                    <button onclick="rcRstAll('free')">FREE</button>
+                </td>
                 <td colspan="14"></td>
             </tr>
         </tfoot>
     </table>
 
+    <div id="rc-line" class="rc-line">Run Control: loading...</div>
 </body>
 </html>
