@@ -9,6 +9,7 @@ import signal
 sys.path.append('../mpmt-board-cli/sensors/')
 from bme280 import BME280
 from tla2024 import TLA2024
+from lsm303 import LSM303AGR
 
 # --- Register access and logic from rc.py ---
 
@@ -34,6 +35,7 @@ class RunControl:
         self.bme = BME280(1, 0x76)
         self.tla = TLA2024(1, 0x48)
         self.bmeExt = BME280(1, 0x77) # BME280 external sensor
+        self.lsm = LSM303AGR()
         try:                          # check if present
             self.bmeExt.readId()
         except IOError:
@@ -49,6 +51,7 @@ class RunControl:
         with self._reg_lock:
             self.regs[add*4:(add*4)+4] = int.to_bytes(value, 4, byteorder='little')
 
+    @staticmethod
     def checkRange(self, value, minVal, maxVal):
         return minVal <= value <= maxVal
 
@@ -110,6 +113,11 @@ class RunControl:
         sensors_measurses.update({'P_hPa': round(bmeData[1], 2)})
         sensors_measurses.update({'H_pct': round(bmeData[2], 2)})
 
+        mx, my, mz = self.lsm.read_mag_raw()
+        sensors_measurses.update({'Mag_x': round(mx*0.15, 2)})
+        sensors_measurses.update({'Mag_y': round(my*0.15, 2)})
+        sensors_measurses.update({'Mag_z': round(mz*0.15, 2)})
+
         if self.bmeExt is not None:
             bmeData = self.bmeExt.readAll()
             sensors_measurses.update({'Text': round(bmeData[0], 2)})
@@ -118,8 +126,6 @@ class RunControl:
                 sensors_measurses.update({'Hext': round(bmeData[2], 2)})
 
         return {"status": "ok", "values": sensors_measurses}
-
-    # Add more command handlers as needed, following the above pattern.
 
     def _log_reader(self, proc):
         """Background thread to read process output and store last 100 lines."""

@@ -337,7 +337,7 @@ class RunControlClient:
             print(status, " ", rate)
         print(f"Deadtime: {deadtime}%")
                  
-    def process_evbuilder_start(self, host="192.168.16.70", data_port = 5555, disable_rc=True, path="/opt/mpmt-readout/build/evproducer"):
+    def process_evbuilder_start(self, host: str="192.168.16.70", data_port: int = 5555, disable_rc: bool=True, path: str="/opt/mpmt-readout/build/evproducer"):
         """
         Start the evbuilder process on the server.
         
@@ -350,9 +350,7 @@ class RunControlClient:
             params.append("--disable-rc")
 
         command_args = {"path": path, "params": params}
-        print(command_args)
         resp = self._send_command("start_process", command_args)
-        print("Process started:", resp)
         return resp
     
     def process_evbuilder_stop(self):
@@ -362,10 +360,8 @@ class RunControlClient:
         Sends the command:
         {"command": "stop_process", "args": {}}
         """
-        print("\n🛑 Stopping event builder...")
         resp = self._send_command("stop_process", {})
-        print("Process stopped:", resp)
-        return resp     
+        return resp
        
     def process_program_febs(
         self,
@@ -812,11 +808,11 @@ class RunControlClient:
             if verbose:
                 print("🧹 DMA free")
 
-    def reset_fifo(self, verbose: bool = True) -> None:
+    def reset_fifo(self, verbose: bool = True) -> str:
         """
         Toggle FIFO reset bit (reg 4, bit 0x0200).
-        - If set  -> clear it  (print 'FIFO free')
-        - If clear-> set it    (print 'FIFO reset')
+        - If set -> clear it (print 'FIFO free')
+        - If clear -> set it (print 'FIFO reset')
         Mirrors original CLI semantics.
         """
         val = self.read(self._REG_CTRL)
@@ -824,10 +820,12 @@ class RunControlClient:
             self._clear_bits(self._REG_CTRL, self._BIT_FIFO)
             if verbose:
                 print("🧹 FIFO free")
+            return "free"
         else:
             self._set_bits(self._REG_CTRL, self._BIT_FIFO)
             if verbose:
                 print("🔄 FIFO reset")
+            return "reset"
 
     def reset(self, which: str, verbose: bool = True) -> None:
         """

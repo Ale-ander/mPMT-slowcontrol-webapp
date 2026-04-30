@@ -1,5 +1,21 @@
 @import "https://www.nerdfonts.com/assets/css/webfont.css";
 
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 :root {
     /* Definizione dei tuoi colori */
     --bg-blue: #031633;
@@ -21,7 +37,7 @@ h1 {
   background: var(--bg-blue);
   color: white;
   padding: 8px 20px;
-  border-radius: 5px;
+  border-radius: 4px;
 }
 
 .status-bar-container {
@@ -40,12 +56,10 @@ h1 {
 
 table {
   width: 100%;
-  border-collapse: separate;
   border-spacing: 0;
 
   margin-top: 6px;
   border-radius: 6px;
-  overflow: hidden;
 }
 
 th,
@@ -60,7 +74,6 @@ td {
 th {
   background: var(--bg-blue);
   position: sticky;
-  top: 0;
   color: white;
   text-transform: uppercase;
 }
@@ -73,7 +86,7 @@ tr:hover td {
 .tag {
   display: inline-block;
   padding: 2px 6px;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 16px;
 }
 
@@ -95,22 +108,28 @@ tr:hover td {
   color: #b71c1c;
 }
 
-.msg {
-  margin-left: 6px;
-  font-size: 16px;
-  color: #555;
-}
 
 .sensor-line,
-.daq-line,
-.rc-line {
+.daq-line {
   background: var(--bg-blue);
   backdrop-filter: blur(10px);
   color: white;
   border-bottom: 1px solid #333;
   padding: 8px 20px;
   display: flex;
-  border-radius: 5px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.tray {
+  width: 49.8%;
+  background: var(--bg-blue);
+  backdrop-filter: blur(10px);
+  color: white;
+  border-bottom: 1px solid #333;
+  padding: 8px 20px;
+  display: flex;
+  border-radius: 4px;
   margin-top: 8px;
 }
 
@@ -119,9 +138,27 @@ tr:hover td {
 .daq-line i,
 .daq-line span.icon,
 .rc-line i,
-.rc-line span.icon {
+.rc-line span.icon,
+.tray i,
+.tray span.icon {
     color: #00d4ff;
     text-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+}
+
+.bottom-line {
+  display: flex;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.rc-line {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.logs-tray {
+  margin-left: auto;
+  margin-right: 0;
 }
 
 .label {
@@ -162,6 +199,10 @@ input[type="number"] {
   padding: 2px;
 }
 
+input[type="text"] {
+  width: 100px;
+}
+
 .control-group button {
   padding:2px 5px;
   font-size: 14px;
@@ -180,6 +221,19 @@ input[type="number"] {
   background:rgba(0,212,255,0.25);
   border:1px solid #00d4ff;
   border-radius:4px;
+}
+
+#fifo-btn,
+#acq-btn {
+  margin-left: auto;
+  margin-right: 0;
+  padding:2px 5px;
+  font-size: 14px;
+  background:rgba(0,212,255,0.25);
+  border:1px solid #00d4ff;
+  border-radius:4px;
+  cursor:pointer;
+  box-shadow: 2px 2px #f6f6f6;
 }
 
 .control-group select,

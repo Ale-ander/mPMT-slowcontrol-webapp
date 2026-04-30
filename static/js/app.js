@@ -84,7 +84,11 @@ async function refreshSensorsLine() {
 
         <i class="nf nf-fa-temperature_half"></i>&nbsp;${s.T?.toFixed?.(2) ?? "-"} °C |&nbsp;
         <i class="nf nf-weather-humidity"></i>&nbsp;${s.H?.toFixed?.(1) ?? "-"} % |&nbsp;
-        <i class="nf nf-md-gauge_full"></i>&nbsp;${s.P?.toFixed?.(1) ?? "-"} hPa
+        <i class="nf nf-md-gauge_full"></i>&nbsp;${s.P?.toFixed?.(1) ?? "-"} hPa |&nbsp;
+
+        <i class="nf nf-fa-magnet"></i>&nbsp;x:${s.Mx?.toFixed?.(1) ?? "-"} uT,
+        y:${s.My?.toFixed?.(1) ?? "-"} uT,
+        z:${s.Mz?.toFixed?.(1) ?? "-"} uT
         `;
     } catch (e) {
         el.innerHTML = "Sensors: error";
@@ -110,15 +114,13 @@ async function refreshDAQLine() {
         FIFO: ${d.fifo_words} words (${d.fifo_full ? 'FULL' : 'OK'}) |&nbsp;
         <i class="nf nf-fa-refresh"></i>&nbsp;Timing:&nbsp;
         Tr32: ${d.tr32_received ? '✔' : '✖'}
-              (${d.tr32_received
-                  ? (d.tr32_aligned ? 'aligned' : 'NOT aligned')
-                  : 'NO signal'})
+              (${d.tr32_received ? (d.tr32_aligned ? 'aligned' : 'NOT aligned') : 'NO signal'},
+               ${d.tr32_received ? (d.tr32_sync ? 'in sync' : 'arrived early') : 'NO signal'})
               #${d.tr32_count} -
-        TagT: ${d.tagt_received ? '✔' : '✖'}
-              (${d.tagt_received
-                  ? (d.tagt_aligned ? 'aligned' : 'NOT aligned')
-                  : 'NO signal'},
-               ${d.tagt_parity_ok ? 'parity OK' : 'PARITY ERR'}) |&nbsp;
+        TagT: ${d.tr32_received ? (d.tagt_received ? '✔' : '✖') : '✖'}
+              (${d.tr32_received
+                  ? (d.tagt_parity_ok ? 'parity OK' : 'PARITY ERR')
+                  : 'NO signal'}) |&nbsp;
         <i class="nf nf-fa-clock"></i>&nbsp;Clock:&nbsp;
         PLL: ${d.pll_locked ? 'locked' : 'FREE'} and
              ${d.pll_stable ? 'stable' : 'UNSTABLE'} -
@@ -194,15 +196,29 @@ select.addEventListener('change', function() {
         // Applica i vincoli per SPI Speed
         input.min = 0;
         input.max = 3;
-        input.placeholder = "Range 0-3";
+        input.placeholder = "";
         hint.innerHTML = `Only 0 to 3`;
         hint.style.color = "var(--accent-blue)";
     } else {
         // Rimuovi i vincoli per gli altri parametri
         input.removeAttribute('min');
         input.removeAttribute('max');
-        input.placeholder = "Value...";
+        input.placeholder = "Insert value...";
         hint.innerHTML = "";
+    }
+});
+
+const btn = document.getElementById('acq-btn');
+
+btn.addEventListener('click', function() {
+    if (this.innerText.includes("Start")) {
+        this.innerHTML = `Stop ACQ`;
+        this.style.backgroundColor = "#ff5555";
+        btn.onclick = startACQ();
+    } else {
+        this.innerHTML = `Start ACQ`;
+        this.style.backgroundColor = "rgba(0,212,255,0.25)";
+        btn.onclick = stopACQ();
     }
 });
 
@@ -312,6 +328,45 @@ async function setParamRC() {
   msg.textContent = 'Sending...';
   try {
     const out = await apiPost('/api/rc/param', {channel: ch, param: param, value: val});
+    msg.textContent = out.message || 'OK';
+    refresh();
+  } catch(e) {
+    msg.textContent = 'Error: ' + e.message;
+  }
+}
+
+async function rstFIFO() {
+  const msg = document.getElementById('msg');
+  msg.textContent = 'Sending...';
+  try {
+    const out = await apiPost('/api/rc/rstfifo');
+    msg.textContent = out.message || 'OK';
+    refresh();
+  } catch(e) {
+    msg.textContent = 'Error: ' + e.message;
+  }
+}
+
+async function startACQ() {
+  const ip = document.getElementById('acq_ip').value;
+  const msg = document.getElementById('msg');
+  msg.textContent = 'Sending...';
+  console.log('startACQ',)
+  try {
+    const out = await apiPost('/api/acq/start', {ip_addr: ip});
+    msg.textContent = out.message || 'OK';
+    refresh();
+  } catch(e) {
+    msg.textContent = 'Error: ' + e.message;
+  }
+}
+
+async function stopACQ() {
+  const msg = document.getElementById('msg');
+  msg.textContent = 'Sending...';
+  console.log('stopACQ',)
+  try {
+    const out = await apiPost('/api/acq/stop');
     msg.textContent = out.message || 'OK';
     refresh();
   } catch(e) {

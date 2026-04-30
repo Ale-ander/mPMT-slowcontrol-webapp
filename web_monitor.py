@@ -84,10 +84,10 @@ def read_daq_status(rc):
         # --- TR32 ---
         tr32_received = not (reg3 & 0x800)
         tr32_aligned = not (reg3 & 0x400)
+        tr32_sync = not (reg3 & 0x1000)
         tr32_count = rc.read(45)
 
         tagt_received = not (reg3 & 0x2000)
-        tagt_aligned = not (reg3 & 0x1000)
         tagt_parity_ok = not (reg3 & 0x4000)
 
         # --- CLOCK ---
@@ -107,10 +107,10 @@ def read_daq_status(rc):
 
             "tr32_received": tr32_received,
             "tr32_aligned": tr32_aligned,
+            "tr32_sync": tr32_sync,
             "tr32_count": tr32_count,
 
             "tagt_received": tagt_received,
-            "tagt_aligned": tagt_aligned,
             "tagt_parity_ok": tagt_parity_ok,
 
             "pll_locked": pll_locked,
@@ -392,6 +392,10 @@ class Poller(threading.Thread):
                         "T": sens.get("T_C"),
                         "P": sens.get("P_hPa"),
                         "H": sens.get("H_pct"),
+
+                        "Mx": sens.get("Mag_x"),
+                        "My": sens.get("Mag_y"),
+                        "Mz": sens.get("Mag_z"),
                     }
 
                     with data_lock:
@@ -727,6 +731,15 @@ def make_app(channels, poller: Poller, host):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+    @app.post("/api/rc/rstfifo")
+    def api_rc_rstfifo():
+        try:
+            with poller._lock:
+                fifo_status = poller.rc.reset_fifo(verbose=False)
+            return jsonify({"ok": True, "message": "FIFO resetted" if fifo_status.lower() == "reset" else "FIFO free"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     @app.post("/api/rc/turn_all")
     def api_rc_turn_all():
         data = request.get_json(silent=True) or {}
@@ -793,6 +806,26 @@ def make_app(channels, poller: Poller, host):
                 poller.rc.write(5, reg_val)
             print(f"[BLOCK] ALL channels -> {action.upper()}")
             return jsonify({"ok": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.post("/api/acq/start")
+    def api_acq_start():
+        data = request.get_json(silent=True) or {}
+        ip = (data.get("ip_addr") or "")
+        try:
+            with poller._lock:
+                poller.rc.process_evbuilder_start(host=ip)
+            return jsonify({"ok": True, "message": f"ACQ started on {ip}"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.post("/api/acq/stop")
+    def api_acq_stop():
+        try:
+            with poller._lock:
+                poller.rc.process_evbuilder_stop()
+            return jsonify({"ok": True, "message": f"ACQ stopped"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
