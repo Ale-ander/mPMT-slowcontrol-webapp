@@ -37,6 +37,10 @@ class RunControl:
         self.bmeExt = BME280(1, 0x77) # BME280 external sensor
         self.lsm = LSM303AGR()
         try:                          # check if present
+            self.lsm.read_mag_raw()
+        except IOError:
+            self.lsm = None
+        try:                          # check if present
             self.bmeExt.readId()
         except IOError:
             self.bmeExt = None
@@ -113,10 +117,11 @@ class RunControl:
         sensors_measurses.update({'P_hPa': round(bmeData[1], 2)})
         sensors_measurses.update({'H_pct': round(bmeData[2], 2)})
 
-        mx, my, mz = self.lsm.read_mag_raw()
-        sensors_measurses.update({'Mag_x': round(mx*0.15, 2)})
-        sensors_measurses.update({'Mag_y': round(my*0.15, 2)})
-        sensors_measurses.update({'Mag_z': round(mz*0.15, 2)})
+        if self.lsm is not None:
+            mx, my, mz = self.lsm.read_mag_raw()
+            sensors_measurses.update({'Mag_x': round(mx*0.15, 2)})
+            sensors_measurses.update({'Mag_y': round(my*0.15, 2)})
+            sensors_measurses.update({'Mag_z': round(mz*0.15, 2)})
 
         if self.bmeExt is not None:
             bmeData = self.bmeExt.readAll()
