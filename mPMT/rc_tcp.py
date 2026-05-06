@@ -35,9 +35,8 @@ class RunControl:
         self.bme = BME280(1, 0x76)
         self.tla = TLA2024(1, 0x48)
         self.bmeExt = BME280(1, 0x77) # BME280 external sensor
-        self.lsm = LSM303AGR()
-        try:                          # check if present
-            self.lsm.read_mag_raw()
+        try:                          # check if present (older boards do not have it)
+            self.lsm = LSM303AGR()
         except IOError:
             self.lsm = None
         try:                          # check if present

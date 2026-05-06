@@ -72,7 +72,7 @@ async function refreshSensorsLine() {
             return;
         }
         el.innerHTML = `
-        <i class="nf nf-fa-wifi"></i>&nbsp;Sensors:&nbsp;<span>&nbsp;</span>
+        <i class="nf nf-fa-wifi"></i>&nbsp;Sensors:&nbsp;
         <i class="nf nf-md-lightning_bolt"></i>&nbsp;5V:${s.V_5V?.toFixed?.(3) ?? "-"} V |&nbsp;
         <i class="nf nf-md-lightning_bolt"></i>&nbsp;3.3V:${s.V_3V3?.toFixed?.(3) ?? "-"} V |&nbsp;
 
@@ -109,10 +109,14 @@ async function refreshDAQLine() {
         }
 
         el.innerHTML = `
-        <i class="nf nf-fa-database"></i>&nbsp;Data:&nbsp;
+        <div id="daq-line-data" class="data-line">
+        <i class="nf nf-fa-database"></i>&nbsp;
         Deadtime: ${d.deadtime}% -
-        FIFO: ${d.fifo_words} words (${d.fifo_full ? 'FULL' : 'OK'}) |&nbsp;
-        <i class="nf nf-fa-refresh"></i>&nbsp;Timing:&nbsp;
+        FIFO: ${d.fifo_words} words (${d.fifo_full ? 'FULL' : 'OK'})
+        </div>
+
+        <div id="daq-line-timing" class="timing-line">
+        <i class="nf nf-fa-hourglass_2"></i>&nbsp;
         Tr32: ${d.tr32_received ? '✔' : '✖'}
               (${d.tr32_received ? (d.tr32_aligned ? 'aligned' : 'NOT aligned') : 'NO signal'},
                ${d.tr32_received ? (d.tr32_sync ? 'in sync' : 'arrived early') : 'NO signal'})
@@ -120,11 +124,15 @@ async function refreshDAQLine() {
         TagT: ${d.tr32_received ? (d.tagt_received ? '✔' : '✖') : '✖'}
               (${d.tr32_received
                   ? (d.tagt_parity_ok ? 'parity OK' : 'PARITY ERR')
-                  : 'NO signal'}) |&nbsp;
-        <i class="nf nf-fa-clock"></i>&nbsp;Clock:&nbsp;
+                  : 'NO signal'})
+        </div>
+
+        <div id="daq-line-clock" class="clock-line">
+        <i class="nf nf-fa-clock"></i>&nbsp;
         PLL: ${d.pll_locked ? 'locked' : 'FREE'} and
              ${d.pll_stable ? 'stable' : 'UNSTABLE'} -
         Sources: ${d.clock_source} (set: ${d.clock_source_set}) - cable ${d.clock_cable} (set: ${d.clock_cable_set})
+        </div>
         `;
 
     } catch (e) {
@@ -157,34 +165,43 @@ async function refreshRCLine() {
     }
 }
 
+function setFooterStatus(status) {
+  const el = document.getElementById('updated_at');
+
+  el.classList.remove(
+    'footer-status-connected',
+    'footer-status-disconnected',
+    'footer-status-unknown'
+  );
+
+  el.classList.add(`footer-status-${status}`);
+}
+
 // update live status
 async function updateFooterTimestamp() {
-    const el = document.getElementById('updated_at');
+  const el = document.getElementById('updated_at');
 
-    try {
-        const r = await fetch('/api/last_update');
-        const j = await r.json();
+  try {
+    const r = await fetch('/api/last_update');
+    const j = await r.json();
 
-        // ---- Timestamp ----
-        if (j.updated_at && j.rc.status == "connected") {
-            el.textContent = j.updated_at + ' (connected)';
-            el.style.color = '#00d4ff';
-        } else {
-            el.textContent = '—';
-            el.style.color = 'gray';
-        }
-
-        // ---- RunControl status ----
-        if (j.rc && j.rc.status !== "connected") {
-             el.textContent = j.updated_at + ' ( AcqMainboard disconnected)';
-             el.style.color = 'red';
-        }
-
-    } catch (e) {
-        // API unreachable (Flask down, network error, etc.)
-        el.textContent = 'DISCONNECTED';
-        el.style.color = 'red';
+    if (j.updated_at && j.rc.status == "connected") {
+      el.textContent = j.updated_at + ' (connected)';
+      setFooterStatus('connected');
+    } else {
+      el.textContent = '—';
+      setFooterStatus('unknown');
     }
+
+    if (j.rc && j.rc.status !== "connected") {
+      el.textContent = j.updated_at + ' (AcqMainboard disconnected)';
+      setFooterStatus('disconnected');
+    }
+
+  } catch (e) {
+    el.textContent = 'DISCONNECTED';
+    setFooterStatus('disconnected');
+  }
 }
 
 const select = document.getElementById('rc_param_select');
@@ -208,18 +225,30 @@ select.addEventListener('change', function() {
     }
 });
 
+function setAcqButtonState(isRunning) {
+  const btn = document.getElementById('acq-btn');
+  if (!btn) return;
+
+  btn.classList.toggle('acq-start', !isRunning);
+  btn.classList.toggle('acq-stop', isRunning);
+
+  btn.textContent = isRunning ? 'Stop ACQ' : 'Start ACQ';
+}
+
 const btn = document.getElementById('acq-btn');
 
+btn.classList.add('acq-start');
+
 btn.addEventListener('click', function() {
-    if (this.innerText.includes("Start")) {
-        this.innerHTML = `Stop ACQ`;
-        this.style.backgroundColor = "#ff5555";
-        btn.onclick = startACQ();
-    } else {
-        this.innerHTML = `Start ACQ`;
-        this.style.backgroundColor = "rgba(0,212,255,0.25)";
-        btn.onclick = stopACQ();
-    }
+  const isRunning = this.classList.contains('acq-stop');
+
+  if (isRunning) {
+    stopACQ();
+    setAcqButtonState(false);
+  } else {
+    startACQ();
+    setAcqButtonState(true);
+  }
 });
 
 async function getVersion() {
@@ -235,57 +264,50 @@ async function getVersion() {
 }
 
 // --- helper to colorize buttons ---
-function updateButtonStyles(ch, row) {
-  const activeStyle = 'background:rgba(0,212,255,0.25);border:1px solid #00d4ff;border-radius:4px;';
-  const inactiveStyle = 'background:#fff;border:1px solid #ccc;border-radius:4px;';
+function setButtonState(button, active) {
+  if (!button) return;
 
-  // POWER
+  button.classList.add('state-btn');
+  button.classList.toggle('is-active', active);
+  button.classList.toggle('is-inactive', !active);
+}
+
+function updateButtonStyles(ch, row) {
   const turnOn = document.getElementById(`turn_on_${ch}`);
   const turnOff = document.getElementById(`turn_off_${ch}`);
-  if (turnOn && turnOff) {
-    turnOn.style = row.turn_on ? activeStyle : inactiveStyle;
-    turnOff.style = row.turn_on === false ? activeStyle : inactiveStyle;
-  }
 
-  // ENABLE
+  setButtonState(turnOn, row.turn_on);
+  setButtonState(turnOff, row.turn_on === false);
+
   const acqEn = document.getElementById(`acq_en_${ch}`);
   const acqDis = document.getElementById(`acq_dis_${ch}`);
-  if (acqEn && acqDis) {
-    acqEn.style = row.acq_enabled ? activeStyle : inactiveStyle;
-    acqDis.style = row.acq_enabled === false ? activeStyle : inactiveStyle;
-  }
 
-  // TRIGGER
+  setButtonState(acqEn, row.acq_enabled);
+  setButtonState(acqDis, row.acq_enabled === false);
+
   const trigEn = document.getElementById(`trig_en_${ch}`);
   const trigDis = document.getElementById(`trig_dis_${ch}`);
-  if (trigEn && trigDis) {
-    trigEn.style = row.trig_enabled ? activeStyle : inactiveStyle;
-    trigDis.style = row.trig_enabled === false ? activeStyle : inactiveStyle;
-  }
 
-  // PULSER
+  setButtonState(trigEn, row.trig_enabled);
+  setButtonState(trigDis, row.trig_enabled === false);
+
   const pulsEn = document.getElementById(`puls_en_${ch}`);
   const pulsDis = document.getElementById(`puls_dis_${ch}`);
-  if (pulsEn && pulsDis) {
-    pulsEn.style = row.puls_enabled ? activeStyle : inactiveStyle;
-    pulsDis.style = row.puls_enabled === false ? activeStyle : inactiveStyle;
-  }
 
-  // RST
-  const pulsLock = document.getElementById(`rst_on_${ch}`);
-  const pulsFree = document.getElementById(`rst_off_${ch}`);
-  if (pulsLock && pulsFree) {
-    pulsLock.style = row.rst_enabled ? activeStyle : inactiveStyle;
-    pulsFree.style = row.rst_enabled === false ? activeStyle : inactiveStyle;
-  }
+  setButtonState(pulsEn, row.puls_enabled);
+  setButtonState(pulsDis, row.puls_enabled === false);
 
-  // HV
   const hvOn = document.getElementById(`hv_on_${ch}`);
   const hvOff = document.getElementById(`hv_off_${ch}`);
-  if (hvOn && hvOff) {
-    hvOn.style = row.hv_on ? activeStyle : inactiveStyle;
-    hvOff.style = row.hv_on === false ? activeStyle : inactiveStyle;
-  }
+
+  setButtonState(hvOn, row.hv_on);
+  setButtonState(hvOff, row.hv_on === false);
+
+  const rstOn = document.getElementById(`rst_on_${ch}`);
+  const rstOff = document.getElementById(`rst_off_${ch}`);
+
+  setButtonState(rstOn, row.rst_enabled);
+  setButtonState(rstOff, row.rst_enabled === false);
 }
 
 // --------------------- Controls ---------------------

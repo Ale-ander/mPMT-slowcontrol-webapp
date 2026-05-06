@@ -1,0 +1,312 @@
+@import "https://www.nerdfonts.com/assets/css/webfont.css";
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+* {
+    box-sizing: border-box;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+:root {
+    --bg-blue: #031633;
+    --bg-main: #DEE9FA;
+    --btn-active-bg: rgba(0,212,255,0.25);
+    --btn-active-border: #00d4ff;
+    --btn-inactive-bg: #fff;
+    --btn-inactive-border: #ccc;
+
+    --status-connected: #00d4FF;
+    --status-disconnected: #EA5252;
+    --status-unknown: #1B1B1B;
+
+    --acq-stop-bg: rgba(234, 82, 82, 0.25);
+}
+
+body {
+    font-family: 'RobotoMono NF', monospace;
+    background: var(--bg-main);
+}
+
+@font-face {
+    font-family: 'RobotoMono NF';
+}
+
+h1 {
+    font-size: 30px;
+    justify-content: center;
+    display: flex;
+    color: var(--bg-blue);
+    background: transparent;
+    padding: 8px 20px;
+    position: sticky;
+    margin: 0;
+}
+
+.status-bar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--bg-blue);
+}
+
+.mainboard-info,
+.footer {
+    margin-left: 6px;
+    font-weight: bold;
+    color: var(--bg-blue);
+}
+
+.footer-status-connected {
+  color: var(--status-connected);
+}
+
+.footer-status-disconnected {
+  color: var(--status-disconnected);
+}
+
+.footer-status-unknown {
+  color: var(--status-unknown);
+}
+
+table {
+    width: 100%;
+    border-spacing: 0;
+    margin-top: 6px;
+    border-radius: 6px;
+}
+
+th,
+td {
+    border: 1px solid var(--bg-blue);
+    padding: 3px 4px;
+    text-align: center;
+    font-size: 16px;
+    line-height: 1.15;
+}
+
+th {
+    background: var(--bg-blue);
+    position: sticky;
+    color: var(--bg-main);
+    text-transform: uppercase;
+}
+
+th:first-child {
+    border-radius: 6px 0 0 0;
+}
+
+th:last-child {
+    border-radius: 0 6px 0 0;
+}
+
+tr:hover td {
+    background-color: rgba(0, 212, 255, 0.05);
+    color: var(--bg-blue);
+}
+
+.tag {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.tag.up {
+    color: #2e7d32;
+}
+
+.tag.down {
+    color: #e65100;
+}
+
+.tag.trip {
+    color: #b71c1c;
+}
+
+.daq-line {
+    display: flex;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.sensor-line {
+    display: inline-block;
+    border-radius: 4px;
+    margin-top: 8px;
+    background: var(--bg-blue);
+    backdrop-filter: blur(10px);
+    color: var(--bg-main);
+    border-bottom: 1px solid #333;
+    padding: 8px 15px;
+}
+
+.data-line,
+.clock-line,
+.timing-line {
+    margin-left: 0;
+    margin-right: auto;
+    background: var(--bg-blue);
+    backdrop-filter: blur(10px);
+    color: #dee9fa;
+    border-bottom: 1px solid #333;
+    display: inline-block;
+    padding: 8px 15px;
+    border-radius: 4px;
+}
+
+.tray {
+    width: 49.8%;
+    background: var(--bg-blue);
+    backdrop-filter: blur(10px);
+    color: #dee9fa;
+    border-bottom: 1px solid #333;
+    padding: 8px 20px;
+    display: flex;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.sensor-line i,
+.sensor-line span.icon,
+.daq-line i,
+.daq-line span.icon,
+.rc-line i,
+.rc-line span.icon,
+.tray i,
+.tray span.icon {
+    color: #00d4ff;
+    text-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+}
+
+.bottom-line {
+    display: flex;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.rc-line {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.logs-tray {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.label {
+    font-weight: 600;
+    margin-right: 6px;
+}
+
+#global-controls {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.main-container {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 30px;
+    overflow-x: auto;
+    margin-top: 6px;
+    color: var(--bg-blue);
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    white-space: nowrap;
+}
+
+.group-title {
+    font-weight: bold;
+    margin-right: 10px;
+    color: var(--bg-blue);
+}
+
+input[type="number"] {
+    padding: 2px;
+}
+
+input[type="text"] {
+    width: 100px;
+}
+
+.control-group button {
+    padding:2px 5px;
+    font-size: 14px;
+    border:1px solid;
+    background: var(--bg-main);
+    border-radius:4px;
+    cursor:pointer;
+}
+
+.control-group button:hover {
+    background:#f3f3f3;
+}
+
+#apply-btn {
+    background:rgba(0,212,255,0.25);
+    border:1px solid #00d4ff;
+    border-radius:4px;
+}
+
+#fifo-btn,
+#acq-btn {
+    margin-left: auto;
+    margin-right: 0;
+    padding:2px 5px;
+    font-size: 14px;
+    background:rgba(0,212,255,0.25);
+    border:1px solid #00d4ff;
+    border-radius:4px;
+    cursor:pointer;
+}
+
+#acq-btn.acq-start {
+  background: var(--btn-active-bg);
+  border: 1px solid var(--btn-active-border);
+}
+
+#acq-btn.acq-stop {
+  background: var(--acq-stop-bg);
+  border: 1px solid var(--status-disconnected);
+}
+
+.control-group select,
+.control-group input {
+    padding:2px 5px;
+    background: #f6f6f6;
+    border: 1px solid;
+    border-radius: 4px;
+}
+
+.state-btn {
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.state-btn.is-active {
+  background: var(--btn-active-bg);
+  border: 1px solid var(--btn-active-border);
+}
+
+.state-btn.is-inactive {
+  background: var(--btn-inactive-bg);
+  border: 1px solid var(--btn-inactive-border);
+}
