@@ -8,7 +8,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style_test.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script>
         window.APP_CONFIG = {
           refreshMs: {{ refresh_ms }}
@@ -153,5 +153,14 @@
             <div id="msg" class="msg"></div>
         </div>
     </div>
+
+    <div id="theme-selector" class="theme-selector">
+        Theme:
+        <select id="theme-select">
+            <option value="blue">Blue</option>
+            <option value="green">Green</option>
+        </select>
+    </div>
+
 </body>
 </html>

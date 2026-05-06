@@ -18,3 +18,9 @@ Optional arguments:
 | `--port` | HTTP web port (0 = auto) | `5555` |
 
 ---
+
+### Two skins available:
+
+![bluesite](pictures/blue_site.jpg)
+
+![greensite](pictures/green_site.jpg)

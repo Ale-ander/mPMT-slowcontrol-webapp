@@ -1,3 +1,24 @@
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem('theme', theme);
+
+  const select = document.getElementById('theme-select');
+  if (select) {
+    select.value = theme;
+  }
+}
+
+const savedTheme = localStorage.getItem('theme') || 'blue';
+setTheme(savedTheme);
+
+const themeSelect = document.getElementById('theme-select');
+
+if (themeSelect) {
+  themeSelect.addEventListener('change', function() {
+    setTheme(this.value);
+  });
+}
+
 // get new values
 async function refresh() {
     try {
