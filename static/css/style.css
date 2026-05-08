@@ -20,26 +20,26 @@ input[type=number] {
 
 :root,
 [data-theme="blue"] {
-    --bg-main: #DEE9FA;
-    --bg-bar: #031633;
-    --bg-table: #031633;
-    --bg-table-hover: rgba(0, 212, 255, 0.05);
-    --text-bar: #DEE9FA;
-    --text-main: #031633;
+    --bg-main: #F9F7F7;
+    --bg-bar: #112D4E;
+    --bg-table: #112D4E;
+    --bg-table-hover: rgba(17, 45, 78, 0.05);
+    --text-bar: #F9F7F7;
+    --text-main: #112D4E;
 
-    --color-icons: #00d4ff;
-    --bg-icons: rgba(0, 212, 255, 0.6);
+    --color-icons: #3F72AF;
+    --bg-icons: rgba(63, 114, 175, 0.6);
 
     --text-up: green;
     --text-down: orange;
     --text-trip: red;
 
-    --btn-active-bg: rgba(0,212,255,0.25);
-    --btn-active-border: #00d4ff;
+    --btn-active-bg: rgba(63, 114, 175, 0.5);
+    --btn-active-border: #3F72AF;
     --btn-inactive-bg: #fff;
     --btn-inactive-border: #ccc;
 
-    --status-connected: #00d4FF;
+    --status-connected: #3F72AF;
     --status-disconnected: #EA5252;
     --status-unknown: #1B1B1B;
 
