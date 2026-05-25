@@ -62,10 +62,10 @@ async function refresh() {
                 <td>${row.ttp.toFixed(1) ?? ''}</td>
                 <td>${row.voltage?.toFixed?.(3) ?? ''}</td>
                 <td>${row.voltage_set ?? ''}</td>
-                <td>${(row.current!=null)?(row.current).toFixed(4):''}</td>
+                <td>${(row.current!=null)?(row.current).toFixed(3):''}</td>
                 <td>${row.temperature?.toFixed?.(1) ?? ''}</td>
                 <td>${row.status_tag}</td>
-                <td>${row.threshold ?? ''}</td>
+                <td>${row.threshold?.toFixed?.(1) ?? ''}</td>
                 <td>${row.alarm_str}</td>
                 `;
             tbody.appendChild(tr);

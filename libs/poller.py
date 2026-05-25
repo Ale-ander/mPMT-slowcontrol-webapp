@@ -4,7 +4,6 @@ import time
 from types import SimpleNamespace
 from .hvmodbus import HVModbus
 from .rc_client import RunControlClient
-from .helper_functions import decode_status
 
 
 class Poller(threading.Thread):
@@ -58,10 +57,10 @@ class Poller(threading.Thread):
                     if not self.hv.open(ch):
                         continue
                     if p == "vset":
-                        v = int(max(0, min(1450, int(value))))
+                        v = max(0, min(1450, int(value)))
                         self.hv.setVoltageSet(v)
                     elif p == "thr":
-                        v = int(max(0, min(4095, int(value))))
+                        v = float(max(0, min(4095, value)))
                         self.hv.setThreshold(v)
                 except Exception:  # swallow per-channel errors to continue others
                     pass
@@ -163,17 +162,17 @@ class Poller(threading.Thread):
                     # --- Read HV only if channel is turned ON ---
                     voltage = voltage_set = current = temperature = status_txt = alarm = threshold = None
                     hv_on = '0'
-                    if turn_on:
+                    if turn_on and self.hv.open(ch):
                         try:
-                            mon = self.hv.readMonRegisters(slave=ch)
+                            mon = self.hv.readMonRegisters()
                             if mon:
                                 voltage = float(mon.get("V"))
                                 voltage_set = mon.get("Vset")
                                 current = float(mon.get("I"))
                                 temperature = float(mon.get("T"))
-                                status_txt = decode_status(mon.get("status"))
+                                status_txt = self.decode_status(mon.get("status"))
                                 alarm = mon.get("alarm")
-                                threshold = mon.get("threshold")
+                                threshold = mon.get('thresholdm')+mon.get('thresholdq')/10
                                 hv_on = mon.get("status") in (0, 2)
                         except Exception as e:
                             print(f"⚠️ HV communication error on channel {ch}: {e}")
@@ -454,6 +453,15 @@ class Poller(threading.Thread):
         value = ''.join(ch for ch in value if 32 <= ord(ch) <= 126)
 
         return value.strip()
+
+    @staticmethod
+    def decode_status(status_code: int) -> str:
+        """Convert numeric HV status code to human-readable string."""
+        mapping = {
+            0: 'UP', 1: 'DOWN', 2: 'RUP', 3: 'RDN',
+            4: 'TUP', 5: 'TDN', 6: 'TRIP', -1: 'ERR'
+        }
+        return mapping.get(status_code, 'undef')
 
 
 ######################################

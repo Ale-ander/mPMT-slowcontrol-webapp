@@ -129,7 +129,7 @@ def make_app(channels, poller, host):
             poller.set_param_hv("all" if channel == "all" else int(channel), str(param), v)
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
-        return jsonify({"ok": True, "message": f"{param}={int(v)} applied to {channel}"}), 200
+        return jsonify({"ok": True, "message": f"{param}={v} applied to {channel}"}), 200
 
     @app.post("/api/hv/power")
     def api_hv_power():
