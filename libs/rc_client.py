@@ -610,7 +610,7 @@ class RunControlClient:
                            all_channels: bool = False, verbose: bool = True) -> None:
         """
         Set ratemeter threshold(s).
-        - value: 1..65535   (firmware interprets this as time-to-peak; ~ value*8 ns)
+        - value: 1..65535 (firmware interprets this as time-to-peak; ~ value*8 ns)
         - channels: list of channels in 1..19; if None with all_channels=False -> do nothing
         - all_channels: set same value for all channels (1..19)
         """
@@ -696,9 +696,9 @@ class RunControlClient:
             reg = (ch - 1) // 2 + 28
             current = self.read(reg)
             if ch % 2 == 0:
-                newval = (value << 12) | (current & 0xFFF)
-            else:
                 newval = (current & 0xFFF000) | value
+            else:
+                newval = (value << 12) | (current & 0xFFF)
             self.write(reg, newval)
             if verbose:
                 print(f"Ch {ch:02d}: time-to-peak ← {value} ({value*3.7} ns) [reg {reg}]")
