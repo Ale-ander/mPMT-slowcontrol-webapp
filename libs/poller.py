@@ -88,9 +88,9 @@ class Poller(threading.Thread):
                 try:
                     if self.hv.open(ch):
                         if on:
-                            self.hv.powerOn(ch)
+                            self.hv.powerOn()
                         else:
-                            self.hv.powerOff(ch)
+                            self.hv.powerOff()
                 except Exception:
                     pass
 
