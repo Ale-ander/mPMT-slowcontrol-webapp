@@ -147,11 +147,10 @@ def make_app(channels, poller, host):
         action = (data.get("action") or "").lower()
         try:
             with poller._lock:
-                for ch in poller.channels:
-                    if action == "on":
-                        poller.hv.powerOn(slave=ch)
-                    else:
-                        poller.hv.powerOff(slave=ch)
+                if action == "on":
+                    poller.hv.powerOnAll()
+                else:
+                    poller.hv.powerOffAll()
             print(f"[HV] ALL channels -> {action.upper()}")
             return jsonify({"ok": True})
         except Exception as e:

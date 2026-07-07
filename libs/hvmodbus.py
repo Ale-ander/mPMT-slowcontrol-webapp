@@ -140,9 +140,15 @@ class HVModbus:
         rr = self.client.write_coil(address=1, value=True, device_id=self.address)
         return not rr.isError()
 
+    def powerOnAll(self):
+        self.client.write_coil(address=1, value=True, device_id=0, no_response_expected=True)
+
     def powerOff(self):
         rr = self.client.write_coil(address=1, value=False, device_id=self.address)
         return not rr.isError()
+
+    def powerOffAll(self):
+        self.client.write_coil(address=1, value=False, device_id=0, no_response_expected=True)
 
     def reset(self):
         rr = self.client.write_coil(address=2, value=True, device_id=self.address)

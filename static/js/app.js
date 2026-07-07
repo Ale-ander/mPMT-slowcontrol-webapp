@@ -417,31 +417,6 @@ async function stopACQ() {
   }
 }
 
-async function hvOn() {
-  const ch = getChosenChannelForControls();
-  const msg = document.getElementById('msg');
-  msg.textContent = 'Sending...';
-  try {
-    const out = await apiPost('/api/hv/power', {channel: ch, state:'on'});
-    msg.textContent = out.message || 'OK';
-    refresh();
-  } catch(e) {
-    msg.textContent = 'Error: ' + e.message;
-  }
-}
-
-async function hvOff() {
-  const ch = getChosenChannelForControls();
-  const msg = document.getElementById('msg');
-  msg.textContent = 'Sending...';
-  try {
-    const out = await apiPost('/api/hv/power', {channel: ch, state:'off'});
-    msg.textContent = out.message || 'OK';
-    refresh();
-  } catch(e) {
-    msg.textContent = 'Error: ' + e.message;
-  }
-}
 // --------------------- RC controls ---------------------
 async function rcTurn(ch, state) {
   try {
