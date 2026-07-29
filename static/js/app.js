@@ -1,11 +1,11 @@
 function setTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  localStorage.setItem('theme', theme);
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('theme', theme);
 
-  const select = document.getElementById('theme-select');
-  if (select) {
-    select.value = theme;
-  }
+    const select = document.getElementById('theme-select');
+    if (select) {
+        select.value = theme;
+    }
 }
 
 const savedTheme = localStorage.getItem('theme') || 'blue';
@@ -14,9 +14,9 @@ setTheme(savedTheme);
 const themeSelect = document.getElementById('theme-select');
 
 if (themeSelect) {
-  themeSelect.addEventListener('change', function() {
-    setTheme(this.value);
-  });
+    themeSelect.addEventListener('change', function() {
+        setTheme(this.value);
+    });
 }
 
 // get new values
@@ -30,7 +30,6 @@ async function refresh() {
         data.rows.forEach(row => {
             const tr = document.createElement('tr');
             const ch = row.channel;
-
             tr.innerHTML = `
                 <td class="ch-cell" data-channel="${ch}">${ch}</td>
                 <td>
@@ -62,7 +61,7 @@ async function refresh() {
                 <td>${row.ttp.toFixed(1) ?? ''}</td>
                 <td>${row.voltage?.toFixed?.(3) ?? ''}</td>
                 <td>${row.voltage_set ?? ''}</td>
-                <td>${(row.current!=null)?(row.current).toFixed(3):''}</td>
+                <td>${row.current?.toFixed?.(3) ?? ''}</td>
                 <td>${row.temperature?.toFixed?.(1) ?? ''}</td>
                 <td>${row.status_tag}</td>
                 <td>${row.threshold?.toFixed?.(1) ?? ''}</td>
@@ -72,11 +71,11 @@ async function refresh() {
 
             // --- Apply colors based on API state ---
             updateButtonStyles(ch, row);
-            });
+        });
 
 
     } catch (e) {
-    console.error('Refresh error:', e);
+        console.error('Refresh error:', e);
     }
 }
 
@@ -107,9 +106,9 @@ async function refreshSensorsLine() {
         <i class="nf nf-weather-humidity"></i>&nbsp;${s.H?.toFixed?.(1) ?? "-"} % |&nbsp;
         <i class="nf nf-md-gauge_full"></i>&nbsp;${s.P?.toFixed?.(1) ?? "-"} hPa |&nbsp;
 
-        <i class="nf nf-fa-magnet"></i>&nbsp;x:${s.Mx?.toFixed?.(1) ?? "-"} uT,
-        y:${s.My?.toFixed?.(1) ?? "-"} uT,
-        z:${s.Mz?.toFixed?.(1) ?? "-"} uT
+        <i class="nf nf-fa-magnet"></i>&nbsp;x:${s.Mx?.toFixed?.(2) ?? "-"} uT,
+        y:${s.My?.toFixed?.(2) ?? "-"} uT,
+        z:${s.Mz?.toFixed?.(2) ?? "-"} uT
         `;
     } catch (e) {
         el.innerHTML = "Sensors: error";
@@ -132,7 +131,7 @@ async function refreshDAQLine() {
         el.innerHTML = `
         <div id="daq-line-data" class="data-line">
         <i class="nf nf-fa-database"></i>&nbsp;
-        Deadtime: ${d.deadtime}% -
+        Deadtime: ${d.deadtime?.toFixed?.(1)}% -
         FIFO: ${d.fifo_words} words (${d.fifo_full ? 'FULL' : 'OK'})
         </div>
 
@@ -140,7 +139,7 @@ async function refreshDAQLine() {
         <i class="nf nf-fa-hourglass_2"></i>&nbsp;
         Tr32: ${d.tr32_received ? '✔' : '✖'}
               (${d.tr32_received ? (d.tr32_aligned ? 'aligned' : 'NOT aligned') : 'NO signal'},
-               ${d.tr32_received ? (d.tr32_sync ? 'in sync' : 'arrived early') : 'NO signal'})
+               ${d.tr32_received ? (d.tr32_sync ? 'arrived early' : 'in sync') : 'NO signal'})
               #${d.tr32_count} -
         TagT: ${d.tr32_received ? (d.tagt_received ? '✔' : '✖') : '✖'}
               (${d.tr32_received
@@ -151,8 +150,8 @@ async function refreshDAQLine() {
         <div id="daq-line-clock" class="clock-line">
         <i class="nf nf-fa-clock"></i>&nbsp;
         PLL: ${d.pll_locked ? 'locked' : 'FREE'} and
-             ${d.pll_stable ? 'stable' : 'UNSTABLE'} -
-        Sources: ${d.clock_source} (set: ${d.clock_source_set}) - cable ${d.clock_cable} (set: ${d.clock_cable_set})
+             ${d.pll_stable ? 'Unstable' : 'stable'} -
+        Sources: ${d.clock_source ? 'Cable' : 'Quartz'} (set: ${d.clock_source_set ? 'Cable' : 'Quartz'}) - cable ${d.clock_cable} (set: ${d.clock_cable_set})
         </div>
         `;
 
@@ -187,42 +186,42 @@ async function refreshRCLine() {
 }
 
 function setFooterStatus(status) {
-  const el = document.getElementById('updated_at');
+    const el = document.getElementById('updated_at');
 
-  el.classList.remove(
-    'footer-status-connected',
-    'footer-status-disconnected',
-    'footer-status-unknown'
-  );
+    el.classList.remove(
+        'footer-status-connected',
+        'footer-status-disconnected',
+        'footer-status-unknown'
+    );
 
-  el.classList.add(`footer-status-${status}`);
+    el.classList.add(`footer-status-${status}`);
 }
 
 // update live status
 async function updateFooterTimestamp() {
-  const el = document.getElementById('updated_at');
+    const el = document.getElementById('updated_at');
 
-  try {
-    const r = await fetch('/api/last_update');
-    const j = await r.json();
+    try {
+        const r = await fetch('/api/last_update');
+        const j = await r.json();
 
-    if (j.updated_at && j.rc.status == "connected") {
-      el.textContent = j.updated_at + ' (connected)';
-      setFooterStatus('connected');
-    } else {
-      el.textContent = '—';
-      setFooterStatus('unknown');
+        if (j.updated_at && j.rc.status == "connected") {
+            el.textContent = j.updated_at + ' (connected)';
+            setFooterStatus('connected');
+        } else {
+            el.textContent = '—';
+            setFooterStatus('unknown');
+        }
+
+        if (j.rc && j.rc.status !== "connected") {
+            el.textContent = j.updated_at + ' (AcqMainboard disconnected)';
+            setFooterStatus('disconnected');
+        }
+
+    } catch (e) {
+        el.textContent = 'DISCONNECTED';
+        setFooterStatus('disconnected');
     }
-
-    if (j.rc && j.rc.status !== "connected") {
-      el.textContent = j.updated_at + ' (AcqMainboard disconnected)';
-      setFooterStatus('disconnected');
-    }
-
-  } catch (e) {
-    el.textContent = 'DISCONNECTED';
-    setFooterStatus('disconnected');
-  }
 }
 
 const select = document.getElementById('rc_param_select');
@@ -247,13 +246,13 @@ select.addEventListener('change', function() {
 });
 
 function setAcqButtonState(isRunning) {
-  const btn = document.getElementById('acq-btn');
-  if (!btn) return;
+    const btn = document.getElementById('acq-btn');
+    if (!btn) return;
 
-  btn.classList.toggle('acq-start', !isRunning);
-  btn.classList.toggle('acq-stop', isRunning);
+    btn.classList.toggle('acq-start', !isRunning);
+    btn.classList.toggle('acq-stop', isRunning);
 
-  btn.textContent = isRunning ? 'Stop ACQ' : 'Start ACQ';
+    btn.textContent = isRunning ? 'Stop ACQ' : 'Start ACQ';
 }
 
 const btn = document.getElementById('acq-btn');
@@ -261,15 +260,15 @@ const btn = document.getElementById('acq-btn');
 btn.classList.add('acq-start');
 
 btn.addEventListener('click', function() {
-  const isRunning = this.classList.contains('acq-stop');
+    const isRunning = this.classList.contains('acq-stop');
 
-  if (isRunning) {
-    stopACQ();
-    setAcqButtonState(false);
-  } else {
-    startACQ();
-    setAcqButtonState(true);
-  }
+    if (isRunning) {
+        stopACQ();
+        setAcqButtonState(false);
+    } else {
+        startACQ();
+        setAcqButtonState(true);
+    }
 });
 
 async function getVersion() {
@@ -286,286 +285,402 @@ async function getVersion() {
 
 // --- helper to colorize buttons ---
 function setButtonState(button, active) {
-  if (!button) return;
+    if (!button) return;
 
-  button.classList.add('state-btn');
-  button.classList.toggle('is-active', active);
-  button.classList.toggle('is-inactive', !active);
+    button.classList.add('state-btn');
+    button.classList.toggle('is-active', active);
+    button.classList.toggle('is-inactive', !active);
 }
 
 function updateButtonStyles(ch, row) {
-  const turnOn = document.getElementById(`turn_on_${ch}`);
-  const turnOff = document.getElementById(`turn_off_${ch}`);
+    const turnOn = document.getElementById(`turn_on_${ch}`);
+    const turnOff = document.getElementById(`turn_off_${ch}`);
 
-  setButtonState(turnOn, row.turn_on);
-  setButtonState(turnOff, row.turn_on === false);
+    setButtonState(turnOn, row.turn_on);
+    setButtonState(turnOff, row.turn_on === false);
 
-  const acqEn = document.getElementById(`acq_en_${ch}`);
-  const acqDis = document.getElementById(`acq_dis_${ch}`);
+    const acqEn = document.getElementById(`acq_en_${ch}`);
+    const acqDis = document.getElementById(`acq_dis_${ch}`);
 
-  setButtonState(acqEn, row.acq_enabled);
-  setButtonState(acqDis, row.acq_enabled === false);
+    setButtonState(acqEn, row.acq_enabled);
+    setButtonState(acqDis, row.acq_enabled === false);
 
-  const trigEn = document.getElementById(`trig_en_${ch}`);
-  const trigDis = document.getElementById(`trig_dis_${ch}`);
+    const trigEn = document.getElementById(`trig_en_${ch}`);
+    const trigDis = document.getElementById(`trig_dis_${ch}`);
 
-  setButtonState(trigEn, row.trig_enabled);
-  setButtonState(trigDis, row.trig_enabled === false);
+    setButtonState(trigEn, row.trig_enabled);
+    setButtonState(trigDis, row.trig_enabled === false);
 
-  const pulsEn = document.getElementById(`puls_en_${ch}`);
-  const pulsDis = document.getElementById(`puls_dis_${ch}`);
+    const pulsEn = document.getElementById(`puls_en_${ch}`);
+    const pulsDis = document.getElementById(`puls_dis_${ch}`);
 
-  setButtonState(pulsEn, row.puls_enabled);
-  setButtonState(pulsDis, row.puls_enabled === false);
+    setButtonState(pulsEn, row.puls_enabled);
+    setButtonState(pulsDis, row.puls_enabled === false);
 
-  const hvOn = document.getElementById(`hv_on_${ch}`);
-  const hvOff = document.getElementById(`hv_off_${ch}`);
+    const hvOn = document.getElementById(`hv_on_${ch}`);
+    const hvOff = document.getElementById(`hv_off_${ch}`);
 
-  setButtonState(hvOn, row.hv_on);
-  setButtonState(hvOff, row.hv_on === false);
+    setButtonState(hvOn, row.hv_on);
+    setButtonState(hvOff, row.hv_on === false);
 
-  const rstOn = document.getElementById(`rst_on_${ch}`);
-  const rstOff = document.getElementById(`rst_off_${ch}`);
+    const rstOn = document.getElementById(`rst_on_${ch}`);
+    const rstOff = document.getElementById(`rst_off_${ch}`);
 
-  setButtonState(rstOn, row.rst_enabled);
-  setButtonState(rstOff, row.rst_enabled === false);
+    setButtonState(rstOn, row.rst_enabled);
+    setButtonState(rstOff, row.rst_enabled === false);
 }
 
 // --------------------- Controls ---------------------
 async function apiPost(url, payload) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload || {})
-  });
-  const data = await res.json();
-  if(!res.ok){throw new Error(data.error || 'Request failed');}
-  return data;
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload || {})
+    });
+    const data = await res.json();
+    if (!res.ok) {
+        throw new Error(data.error || 'Request failed');
+    }
+    return data;
 }
 
 function getChosenChannelForControls() {
-  const sel = document.getElementById('ch_select').value;
-  return sel === 'all' ? 'all' : parseInt(sel);
+    const sel = document.getElementById('ch_select').value;
+    return sel === 'all' ? 'all' : parseInt(sel);
 }
 
 async function setParamHV() {
-  const ch = getChosenChannelForControls();
-  const param = document.getElementById('hv_param_select').value;
-  const val = document.getElementById('hv_param_value').value;
-  const msg = document.getElementById('msg');
-  msg.textContent = 'Sending...';
-  try {
-    const out = await apiPost('/api/hv/param', {channel: ch, param: param, value: val});
-    msg.textContent = out.message || 'OK';
-    refresh();
-  } catch(e) {
-    msg.textContent = 'Error: ' + e.message;
-  }
+    const ch = getChosenChannelForControls();
+    const param = document.getElementById('hv_param_select').value;
+    const val = document.getElementById('hv_param_value').value;
+    const msg = document.getElementById('msg');
+    msg.textContent = 'Sending...';
+    try {
+        const out = await apiPost('/api/hv/param', {
+            channel: ch,
+            param: param,
+            value: val
+        });
+        msg.textContent = out.message || 'OK';
+        await refresh();
+    } catch (e) {
+        msg.textContent = 'Error: ' + e.message;
+    }
 }
 
 async function setParamRC() {
-  const ch = getChosenChannelForControls();
-  const param = document.getElementById('rc_param_select').value;
-  const val = document.getElementById('rc_param_value').value;
-  const msg = document.getElementById('msg');
-  msg.textContent = 'Sending...';
-  try {
-    const out = await apiPost('/api/rc/param', {channel: ch, param: param, value: val});
-    msg.textContent = out.message || 'OK';
-    refresh();
-  } catch(e) {
-    msg.textContent = 'Error: ' + e.message;
-  }
+    const ch = getChosenChannelForControls();
+    const param = document.getElementById('rc_param_select').value;
+    const val = document.getElementById('rc_param_value').value;
+    const msg = document.getElementById('msg');
+    msg.textContent = 'Sending...';
+    try {
+        const out = await apiPost('/api/rc/param', {
+            channel: ch,
+            param: param,
+            value: val
+        });
+        msg.textContent = out.message || 'OK';
+        await refresh();
+    } catch (e) {
+        msg.textContent = 'Error: ' + e.message;
+    }
 }
 
 async function rstFIFO() {
-  const msg = document.getElementById('msg');
-  msg.textContent = 'Sending...';
-  try {
-    const out = await apiPost('/api/rc/rstfifo');
-    msg.textContent = out.message || 'OK';
-    refresh();
-  } catch(e) {
-    msg.textContent = 'Error: ' + e.message;
-  }
+    const msg = document.getElementById('msg');
+    msg.textContent = 'Sending...';
+    try {
+        const out = await apiPost('/api/rc/rstfifo');
+        msg.textContent = out.message || 'OK';
+        await refresh();
+    } catch (e) {
+        msg.textContent = 'Error: ' + e.message;
+    }
 }
 
 async function startACQ() {
-  const ip = document.getElementById('acq_ip').value;
-  const msg = document.getElementById('msg');
-  msg.textContent = 'Sending...';
-  console.log('startACQ',)
-  try {
-    const out = await apiPost('/api/acq/start', {ip_addr: ip});
-    msg.textContent = out.message || 'OK';
-    refresh();
-  } catch(e) {
-    msg.textContent = 'Error: ' + e.message;
-  }
+    const ip = document.getElementById('acq_ip').value;
+    const msg = document.getElementById('msg');
+    msg.textContent = 'Sending...';
+    console.log('startACQ', )
+    try {
+        const out = await apiPost('/api/acq/start', {
+            ip_addr: ip
+        });
+        msg.textContent = out.message || 'OK';
+        await refresh();
+    } catch (e) {
+        msg.textContent = 'Error: ' + e.message;
+    }
 }
 
 async function stopACQ() {
-  const msg = document.getElementById('msg');
-  msg.textContent = 'Sending...';
-  console.log('stopACQ',)
-  try {
-    const out = await apiPost('/api/acq/stop');
-    msg.textContent = out.message || 'OK';
-    refresh();
-  } catch(e) {
-    msg.textContent = 'Error: ' + e.message;
-  }
+    const msg = document.getElementById('msg');
+    msg.textContent = 'Sending...';
+    console.log('stopACQ', )
+    try {
+        const out = await apiPost('/api/acq/stop');
+        msg.textContent = out.message || 'OK';
+        await refresh();
+    } catch (e) {
+        msg.textContent = 'Error: ' + e.message;
+    }
 }
 
 // --------------------- RC controls ---------------------
 async function rcTurn(ch, state) {
-  try {
-    const res = await fetch('/api/rc/power', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({channel: ch, state})
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    console.log(`TURN ${state} sent to ch ${ch}`);
-  } catch(e) {
-    alert('TURN error: ' + e.message);
-  }
+    try {
+        const res = await fetch('/api/rc/power', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                channel: ch,
+                state
+            })
+        });
+        const data = await res.json();
+        const msg = document.getElementById('msg');
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        msg.textContent = `TURN ${state} sent to ch ${ch}`;
+    } catch (e) {
+        alert('TURN error: ' + e.message);
+    }
 }
 
 async function rcAcq(ch, action) {
-  try {
-    const res = await fetch('/api/rc/acq', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({channel: ch, action})
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    console.log(`ACQ ${action} sent to ch ${ch}`);
-  } catch(e) {
-    alert('ACQ error: ' + e.message);
-  }
+    try {
+        const res = await fetch('/api/rc/acq', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                channel: ch,
+                action
+            })
+        });
+        const data = await res.json();
+        const msg = document.getElementById('msg');
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        msg.textContent = `ACQ ${action} sent to ch ${ch}`;
+    } catch (e) {
+        alert('ACQ error: ' + e.message);
+    }
 }
 
 async function rcTrig(ch, action) {
-  try {
-    const res = await fetch('/api/rc/trigger', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({channel: ch, action})
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    console.log(`TRIGGER ${action} sent to ch ${ch}`);
-  } catch(e) {
-    alert('TRIGGER error: ' + e.message);
-  }
+    try {
+        const res = await fetch('/api/rc/trigger', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                channel: ch,
+                action
+            })
+        });
+        const data = await res.json();
+        const msg = document.getElementById('msg');
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        msg.textContent = `TRIGGER ${action} sent to ch ${ch}`;
+    } catch (e) {
+        alert('TRIGGER error: ' + e.message);
+    }
 }
 
 async function rcPuls(ch, action) {
-  try {
-    const res = await fetch('/api/rc/pulser', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({channel: ch, action})
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    console.log(`PULSER ${action} sent to ch ${ch}`);
-  } catch(e) {
-    alert('PULSER error: ' + e.message);
-  }
+    try {
+        const res = await fetch('/api/rc/pulser', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                channel: ch,
+                action
+            })
+        });
+        const data = await res.json();
+        const msg = document.getElementById('msg');
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        msg.textContent = `PULSER ${action} sent to ch ${ch}`;
+    } catch (e) {
+        alert('PULSER error: ' + e.message);
+    }
 }
 
 async function rcRst(ch, action) {
-  try {
-    const res = await fetch('/api/rc/rst', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({channel: ch, action})
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    console.log(`${action} sent to ch ${ch}`);
-  } catch(e) {
-    alert('PULSER error: ' + e.message);
-  }
+    try {
+        const res = await fetch('/api/rc/rst', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                channel: ch,
+                action
+            })
+        });
+        const data = await res.json();
+        const msg = document.getElementById('msg');
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        msg.textContent = `${action} sent to ch ${ch}`;
+    } catch (e) {
+        alert('PULSER error: ' + e.message);
+    }
 }
 
 async function hvCtrl(ch, state) {
-  try {
-    const res = await fetch('/api/hv/power', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({channel: ch, state})
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
-    console.log(`HV ${state} sent to ch ${ch}`);
-  } catch(e) {
-    alert('HV error: ' + e.message);
-  }
+    try {
+        const res = await fetch('/api/hv/power', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                channel: ch,
+                state
+            })
+        });
+        const data = await res.json();
+        const msg = document.getElementById('msg');
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        msg.textContent = `HV ${state} sent to ch ${ch}`;
+    } catch (e) {
+        alert('HV error: ' + e.message);
+    }
 }
 
 async function rcTurnAll(action) {
-  if (!confirm(`Are you sure you want to TURN ${action.toUpperCase()} all channels?`)) return;
-  await fetch('/api/rc/turn_all', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ action })
-  });
-  refresh();
+    if (!confirm(`Are you sure you want to TURN ${action.toUpperCase()} all channels?`)) return;
+    try {
+        const msg = document.getElementById('msg');
+        const res = await fetch('/api/rc/turn_all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action
+            })
+        });
+        const data = await res.json();
+        msg.textContent = data.message;
+    } catch (e) {
+        alert('Power error: ' + e.message);
+    }
+    await refresh();
 }
 
 async function rcAcqAll(action) {
-  if (!confirm(`Are you sure you want to ENABLE ${action.toUpperCase()} all channels?`)) return;
-  await fetch('/api/rc/acq_all', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ action })
-  });
-  refresh();
+    if (!confirm(`Are you sure you want to ${action.toUpperCase()} acquisition of all channels?`)) return;
+    try {
+        const msg = document.getElementById('msg');
+        const res = await fetch('/api/rc/acq_all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action
+            })
+        });
+        const data = await res.json();
+        msg.textContent = data.message;
+    } catch (e) {
+        alert('Acq error: ' + e.message);
+    }
+    await refresh();
 }
 
 async function rcTrigAll(action) {
-  if (!confirm(`Are you sure you want to set TRIGGER ${action.toUpperCase()} all channels?`)) return;
-  await fetch('/api/rc/trigger_all', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ action })
-  });
-  refresh();
+    if (!confirm(`Are you sure you want to set TRIGGER ${action.toUpperCase()} all channels?`)) return;
+    try {
+        const msg = document.getElementById('msg');
+        const res = await fetch('/api/rc/trigger_all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action
+            })
+        });
+        const data = await res.json();
+        msg.textContent = data.message;
+    } catch (e) {
+        alert('Trigger error: ' + e.message);
+    }
+    await refresh();
 }
 
 async function rcPulsAll(action) {
-  if (!confirm(`Are you sure you want to set PULSER ${action.toUpperCase()} all channels?`)) return;
-  await fetch('/api/rc/pulser_all', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ action })
-  });
-  refresh();
+    if (!confirm(`Are you sure you want to set PULSER ${action.toUpperCase()} all channels?`)) return;
+    try{
+        const msg = document.getElementById('msg');
+        const res = await fetch('/api/rc/pulser_all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action
+            })
+        });
+        const data = await res.json();
+        msg.textContent = data.message;
+    } catch (e) {
+        alert('Puls error: ' + e.message);
+    }
+    await refresh();
 }
 
 async function hvCtrlAll(action) {
-  if (!confirm(`Are you sure you want to HV ${action.toUpperCase()} all channels?`)) return;
-  await fetch('/api/hv/all', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ action })
-  });
-  refresh();
+    if (!confirm(`Are you sure you want to turn all the channels HV ${action.toUpperCase()}?`)) return;
+    try{
+        const msg = document.getElementById('msg');
+        const res = await fetch('/api/hv/all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action
+            })
+        });
+        const data = await res.json();
+        msg.textContent = data.message;
+    } catch (e) {
+        alert('HV error: ' + e.message);
+    }
+    await refresh();
 }
 
 async function rcRstAll(action) {
-  if (!confirm(`Are you sure you want to ${action.toUpperCase()} all channels?`)) return;
-  await fetch('/api/rc/rst_all', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ action })
-  });
-  refresh();
+    if (!confirm(`Are you sure you want to ${action.toUpperCase()} all channels?`)) return;
+    try {
+        const msg = document.getElementById('msg');
+        const res = await fetch('/api/rc/rst_all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action
+            })
+        });
+        const data = await res.json();
+        msg.textContent = data.message;
+    } catch (e) {
+        alert('Reset error: ' + e.message);
+    }
+    await refresh();
 }
 
 async function refreshMainboard() {
@@ -581,18 +696,12 @@ async function refreshMainboard() {
     }
 }
 
-function cleanText(str) {
-  if (!str) return "";
-  // Remove non-printable ASCII characters (0–31) and extended ones (≥127)
-  return str.replace(/[^\x20-\x7E]/g, "").trim();
-}
-
 setInterval(() => {
-  refresh();
-  refreshMainboard();
-  refreshSensorsLine();
-  refreshDAQLine();
-  refreshRCLine();
-  getVersion();
-  updateFooterTimestamp();
+    refresh();
+    refreshMainboard();
+    refreshSensorsLine();
+    refreshDAQLine();
+    refreshRCLine();
+    getVersion();
+    updateFooterTimestamp();
 }, window.APP_CONFIG.refreshMs);

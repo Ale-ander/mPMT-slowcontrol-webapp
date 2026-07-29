@@ -10,7 +10,7 @@ from libs.poller import Poller, FakePoller
 import threading
 
 data_lock = threading.Lock()
-def make_app(channels, poller, host):
+def make_app(poller, host):
     app = Flask(__name__)
 
     @app.route("/")
@@ -19,7 +19,7 @@ def make_app(channels, poller, host):
         return render_template(
             "index.html",
             refresh_ms=refresh_ms,
-            channels=channels,
+            channels=list(range(1, 20)),
             ip=host
         )
 
@@ -45,7 +45,7 @@ def make_app(channels, poller, host):
         html = request.args.get("html") == "1"
 
         with data_lock:
-            rows = [dict(poller.latest_readings[ch]) for ch in channels if ch in poller.latest_readings]
+            rows = [dict(poller.latest_readings[ch]) for ch in range(1, 20) if ch in poller.latest_readings]
 
         out = []
 
@@ -122,7 +122,7 @@ def make_app(channels, poller, host):
         if param is None or value is None:
             return jsonify({"error": "Missing param or value"}), 400
         try:
-            v = float(value)
+            v = int(value)
         except Exception:
             return jsonify({"error": "Invalid value"}), 400
         try:
@@ -134,12 +134,19 @@ def make_app(channels, poller, host):
     @app.post("/api/hv/power")
     def api_hv_power():
         data = request.get_json(silent=True) or {}
-        channel = data.get("channel", "all")
+        channel = int(data.get("channel", "all"))
         state = (data.get("state") or "").lower()
         if state not in ("on", "off"):
             return jsonify({"error": "state must be 'on' or 'off'"}), 400
-        poller.power("all" if channel == "all" else int(channel), on=(state == "on"))
-        return jsonify({"ok": True, "message": f"HV {state.upper()} sent to {channel}"}), 200
+        try:
+            with poller._lock:
+                if state == 'on':
+                    poller.client.febmgr.powerPMTOn(int(channel))
+                else:
+                    poller.client.febmgr.powerPMTOff(int(channel))
+            return jsonify({"ok": True, "message": f"HV {state.upper()} sent to {channel}"}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     @app.post("/api/hv/all")
     def api_hv_all():
@@ -148,11 +155,10 @@ def make_app(channels, poller, host):
         try:
             with poller._lock:
                 if action == "on":
-                    poller.hv.powerOnAll()
+                    poller.client.febmgr.powerPMTOnAll()
                 else:
-                    poller.hv.powerOffAll()
-            print(f"[HV] ALL channels -> {action.upper()}")
-            return jsonify({"ok": True})
+                    poller.client.febmgr.powerPMTOffAll()
+            return jsonify({"ok": True, "message": f"All HVs {action.upper()}"}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -184,19 +190,11 @@ def make_app(channels, poller, host):
             return jsonify({"error": "state must be 'on' or 'off'"}), 400
         try:
             with poller._lock:
-                  acq_reg = poller.rc.read(0)
-                  acq_enabled = bool(acq_reg & (1 << (channel - 1)))
                   if state == "on":
-                      if acq_enabled:
-                          return jsonify({
-                              "error": f"Cannot turn ON channel {channel}: acquisition must be DISABLED first."
-                          }), 400
-                      poller.rc.turn_on([channel])
-                      msg = f"TURN ON applied to channel {channel}"
+                      poller.client.febmgr.enableChannel([channel])
                   else:
-                      poller.rc.turn_off([channel])
-                      msg = f"TURN OFF applied to channel {channel}"
-                  return jsonify({"ok": True, "message": msg})
+                      poller.client.febmgr.disableChannel([channel])
+                  return jsonify({"ok": True, "message": f"TURN {state.upper()} applied to channel {channel}"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -210,9 +208,9 @@ def make_app(channels, poller, host):
         try:
             with poller._lock:
                 if action == "enable":
-                    poller.rc.enable_channel([int(channel)])
+                    poller.client.febmgr.enableAcqChannel([channel])
                 else:
-                    poller.rc.disable_channel([int(channel)])
+                    poller.client.febmgr.disableAcqChannel([channel])
             return jsonify({"ok": True, "message": f"ACQ {action.upper()} for channel {channel}"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -227,9 +225,9 @@ def make_app(channels, poller, host):
         try:
             with poller._lock:
                 if action == "enable":
-                    poller.rc.enable_trigger([int(channel)])
+                    poller.client.febmgr.enableTriggerChannel([channel])
                 else:
-                    poller.rc.disable_trigger([int(channel)])
+                    poller.client.febmgr.disableTriggerChannel([channel])
             return jsonify({"ok": True, "message": f"TRIGGER {action.upper()} for channel {channel}"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -244,9 +242,9 @@ def make_app(channels, poller, host):
         try:
             with poller._lock:
                 if action == "enable":
-                    poller.rc.enable_pulser([int(channel)])
+                    poller.client.febmgr.enablePulserChannel([channel])
                 else:
-                    poller.rc.disable_pulser([int(channel)])
+                    poller.client.febmgr.disablePulserChannel([channel])
             return jsonify({"ok": True, "message": f"TRIGGER {action.upper()} for channel {channel}"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -261,9 +259,9 @@ def make_app(channels, poller, host):
         try:
             with poller._lock:
                 if action == "lock":
-                    poller.rc.lock_channel([int(channel)])
+                    poller.client.febmgr.clearChannel([channel])
                 else:
-                    poller.rc.free_channel([int(channel)])
+                    poller.client.febmgr.freeChannel([channel])
             return jsonify({"ok": True, "message": f"TRIGGER {action.upper()} for channel {channel}"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -272,8 +270,9 @@ def make_app(channels, poller, host):
     def api_rc_rstfifo():
         try:
             with poller._lock:
-                fifo_status = poller.rc.reset_fifo(verbose=False)
-            return jsonify({"ok": True, "message": "FIFO resetted" if fifo_status.lower() == "reset" else "FIFO free"})
+                fifo_status = poller.client.fpga.readRegister(4) & 0b1000000000 > 0
+                poller.client.fpga.setFifoReset(not fifo_status)
+            return jsonify({"ok": True, "message": "FIFO resetted" if not fifo_status else "FIFO free"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -284,11 +283,10 @@ def make_app(channels, poller, host):
         try:
             with poller._lock:
                 if action == "on":
-                    poller.rc.turn_on(all_channels=True)
+                    poller.client.febmgr.enableAllChannels()
                 else:
-                    poller.rc.turn_off(all_channels=True)
-            print(f"[TURN] ALL channels -> {action.upper()}")
-            return jsonify({"ok": True})
+                    poller.client.febmgr.disbleAllChannels()
+            return jsonify({"ok": True, "message": f"All channels turned {action.upper()}"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -299,11 +297,10 @@ def make_app(channels, poller, host):
         try:
             with poller._lock:
                 if action == "enable":
-                    poller.rc.enable_channel(all_channels=True)
+                    poller.client.febmgr.enableAcqAll()
                 else:
-                    poller.rc.disable_channel(all_channels=True)
-            print(f"[ACQ] ALL channels -> {action.upper()}")
-            return jsonify({"ok": True})
+                    poller.client.febmgr.disableAcqAll()
+            return jsonify({"ok": True, "message": f"ALL channels {action.upper()}D"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -313,10 +310,8 @@ def make_app(channels, poller, host):
         action = (data.get("action") or "").lower()
         try:
             with poller._lock:
-                reg_val = 0x7FFFF if action == "enable" else 0x0
-                poller.rc.write(58, reg_val)
-            print(f"[TRIGGER] ALL channels -> {action.upper()}")
-            return jsonify({"ok": True})
+                poller.client.fpga.writeRegister(58, 0x7FFFF if action == "enable" else 0x0)
+            return jsonify({"ok": True, "message": f"Trigger {action.upper()}D for all channels"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -326,10 +321,8 @@ def make_app(channels, poller, host):
         action = (data.get("action") or "").lower()
         try:
             with poller._lock:
-                reg_val = 0x7FFFF if action == "enable" else 0x0
-                poller.rc.write(59, reg_val)
-            print(f"[PULSER] ALL channels -> {action.upper()}")
-            return jsonify({"ok": True})
+                poller.client.fpga.writeRegister(59, 0x7FFFF if action == "enable" else 0x0)
+            return jsonify({"ok": True, "message": f"Pulser {action.upper()}D for all channels"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -339,10 +332,8 @@ def make_app(channels, poller, host):
         action = (data.get("action") or "").lower()
         try:
             with poller._lock:
-                reg_val = 0x7FFFF if action == "lock" else 0x0
-                poller.rc.write(5, reg_val)
-            print(f"[BLOCK] ALL channels -> {action.upper()}")
-            return jsonify({"ok": True})
+                poller.client.fpga.writeRegister(5, 0x7FFFF if action == "enable" else 0x0)
+            return jsonify({"ok": True, "message": f"All channels {action.upper()}D"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -386,28 +377,26 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description="FD mPMT live control monitor")
     p.add_argument("--host", default='192.168.1.1', help="RunControl/HV host")
     p.add_argument("--rc-port", type=int, default=9000, help="RunControl TCP port")
-    p.add_argument("--channels", default="1-19", help="Channels, e.g. 1-19 or 1,2,3")
     p.add_argument("--interval", type=float, default=1.0, help="Polling interval [s]")
     p.add_argument("--server-port", type=int, default=5678, help="HTTP port")
     p.add_argument("--fake", action="store_true", help="Run with fake local data, no sockets and no hardware")
     args = p.parse_args()
 
-    monitoring_channels = parse_channels(args.channels)
     port = args.server_port if args.server_port != 0 else get_free_port()
 
     if args.fake:
-        pollerclass = FakePoller("dummy", args.rc_port, monitoring_channels, args.interval)
+        pollerclass = FakePoller("dummy", args.rc_port, args.interval)
     else:
-        pollerclass = Poller(args.host, args.rc_port, monitoring_channels, args.interval)
+        pollerclass = Poller(args.host, args.interval)
 
     pollerclass.start()
 
     # Flask app
-    application = make_app(monitoring_channels, pollerclass, args.host or "dummy data")
+    application = make_app(pollerclass, args.host or "dummy data")
 
     print(f"\nWeb UI: http://localhost:{port}/")
     mode = "FAKE" if args.fake else "REAL"
-    print(f"Mode: {mode} | Poll: every {args.interval:.2f} s | channels: {monitoring_channels}\n")
+    print(f"Mode: {mode} | Poll: every {args.interval:.2f} s\n")
 
     try:
         application.run(host="0.0.0.0", port=port, debug=False, threaded=True)

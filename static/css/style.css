@@ -129,7 +129,7 @@ table {
 th,
 td {
     border: 1px solid var(--bg-table);
-    padding: 3px 4px;
+    padding: 3px 1px;
     text-align: center;
     font-size: 16px;
     line-height: 1.15;
@@ -157,7 +157,6 @@ tr:hover td {
 
 .tag {
     display: inline-block;
-    padding: 2px 6px;
     border-radius: 4px;
     font-size: 16px;
 }
@@ -198,7 +197,7 @@ tr:hover td {
     background: var(--bg-bar);
     backdrop-filter: blur(10px);
     color: var(--text-bar);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--bg-bar);
     display: inline-block;
     padding: 8px 15px;
     border-radius: 4px;
@@ -209,7 +208,7 @@ tr:hover td {
     background: var(--bg-bar);
     backdrop-filter: blur(10px);
     color: var(--text-bar);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--bg-bar);
     padding: 8px 20px;
     display: flex;
     border-radius: 4px;
