@@ -1,3 +1,7 @@
+## TCP version (legacy)
+The TPC version is still available in the `TPC` branch. But is not supproted anymore.
+The lates vefrsion is based on `RPC` in main branch. 
+
 # mPMT-data-plotter
 mPMT data plotter and slowcontrol webapp, based on [flask](https://flask.palletsprojects.com/en/stable/). 
 
