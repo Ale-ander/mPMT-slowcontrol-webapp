@@ -116,7 +116,7 @@ def make_app(poller, host):
     @app.post("/api/hv/param")
     def api_hv_param():
         data = request.get_json(silent=True) or {}
-        channel = data.get("channel", "all")
+        channel = data.get("channel")
         param = data.get("param")
         value = data.get("value")
         if param is None or value is None:
@@ -166,7 +166,7 @@ def make_app(poller, host):
     @app.post("/api/rc/param")
     def api_rc_param():
         data = request.get_json(silent=True) or {}
-        channel = data.get("channel", "all")
+        channel = data.get("channel")
         param = data.get("param")
         value = data.get("value")
         if param is None or value is None:

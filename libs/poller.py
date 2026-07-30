@@ -39,29 +39,41 @@ class Poller(threading.Thread):
         self.client = mssclient.MSSClient(url=host)
 
     # ---------- Control operations (thread-safe) ----------
-    def set_param_hv(self, channel: int, param: str, value: int):
+    def set_param_hv(self, channel: int | str, param: str, value: int):
         p = (param or '').strip().lower()
         with self._lock:
             try:
                 onlinechannels = self.client.febmgr.getOnlineChannels(channel_type=mssclient.DeviceType.PMT)
-
-                if channel not in onlinechannels:
+                if channel != "all" and channel not in onlinechannels:
                     pass
                 if p == "vset":
-                    self.client.febmgr.setPMTVoltageSet(channel, value)
+                    if channel == "all":
+                        self.client.febmgr.setPMTVoltageSetAll(value)
+                    else:
+                        self.client.febmgr.setPMTVoltageSet(channel, value)
                 elif p == "thr":
-                    self.client.febmgr.setPMTThreshold(channel, value)
+                    if channel == "all":
+                        self.client.febmgr.setPMTThresholdAll(value)
+                    else:
+                        self.client.febmgr.setPMTThreshold(channel, value)
             except Exception:  # swallow per-channel errors to continue others
                 pass
 
-    def set_param_rc(self, channel: int, param: str, value: int):
+    def set_param_rc(self, channel: int | str, param: str, value: int):
         p = (param or '').strip().lower()
         with self._lock:
             try:
                 if p == "rate_threshold":
-                    self.client.febmgr.setRateThresholdChannel(channel, value)
+                    if channel == "all":
+                        print(f"set_param_rc: {channel} {p} {value}")
+                        self.client.febmgr.setAllRateThreshold(value)
+                    else:
+                        self.client.febmgr.setRateThresholdChannel(channel, value)
                 elif p == "time_to_peak":
-                    self.client.febmgr.setTimeToPeakChannel(channel, value)
+                    if channel == "all":
+                        self.client.febmgr.setAllTimeToPeak(value)
+                    else:
+                        self.client.febmgr.setTimeToPeakChannel(channel, value)
                 elif p == "pulser_frequency":
                     self.client.fpga.setPulserFrequency(value)
                 elif p == "spi_speed":
