@@ -151,7 +151,7 @@ async function refreshDAQLine() {
         <i class="nf nf-fa-clock"></i>&nbsp;
         PLL: ${d.pll_locked ? 'locked' : 'FREE'} and
              ${d.pll_stable ? 'Unstable' : 'stable'} -
-        Sources: ${d.clock_source ? 'Cable' : 'Quartz'} (set: ${d.clock_source_set ? 'Cable' : 'Quartz'}) - cable ${d.clock_cable} (set: ${d.clock_cable_set})
+        Sources: ${d.clock_source ? 'Quartz' : 'Cable'} (set: ${d.clock_source_set ? 'Quartz' : 'Cable'}) - cable ${d.clock_cable} (set: ${d.clock_cable_set})
         </div>
         `;
 

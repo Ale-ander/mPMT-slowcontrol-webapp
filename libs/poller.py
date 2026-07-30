@@ -189,11 +189,12 @@ class Poller(threading.Thread):
                         "T": sens['bme280-in'][0]['value'],
                         "P": sens['bme280-in'][1]['value'],
                         "H": sens['bme280-in'][2]['value'],
-
-                        "Mx": sens['bm1422'][0]['value'],
-                        "My": sens['bm1422'][1]['value'],
-                        "Mz": sens['bm1422'][2]['value']
                     }
+
+                    if 'bm1422' in sens:
+                        sensor_row["Mx"] =  sens['bm1422'][0]['value']
+                        sensor_row["My"] =  sens['bm1422'][1]['value']
+                        sensor_row["Mz"] =  sens['bm1422'][2]['value']
 
                     with self.data_lock:
                         self.latest_sensor_data.clear()
