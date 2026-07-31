@@ -86,13 +86,13 @@ class RpcNamespace:
     parent client so there is a single HTTP session / id counter shared
     across all namespaces.
     """
- 
+
     def __init__(self, client: "BaseRpcClient"):
         self._client = client
- 
+
     def _call(self, method: str, params: Union[list, dict]) -> Any:
         return self._client._call(method, params)
- 
+
     def notify(self, method: str, params: Union[list, dict]) -> None:
         self._client.notify(method, params)
 
@@ -173,14 +173,14 @@ FEBMGR_METHODS: list[tuple[str, list[ParamSpec], type]] = [
     ("powerPMTOn",              [("channel", int, True)],                               type(None)),
     ("powerPMTOff",             [("channel", int, True)],                               type(None)),
     ("resetPMT",                [("channel", int, True)],                               type(None)),
-    ("getPMTInfo",              [("channel", int, True)],                               dict), 
-    ("setPMTSerialNumber",      [("channel", int, True), ("sn", str, True)],            type(None)), 
-    ("setPMTHVSerialNumber",    [("channel", int, True), ("sn", str, True)],            type(None)), 
-    ("setPMTFEBSerialNumber",   [("channel", int, True), ("sn", str, True)],            type(None)), 
-    ("readPMTMonRegisters",     [("channel", int, True)],                               dict), 
-    ("readPMTCalibRegisters",   [("channel", int, True)],                               dict), 
-    ("writePMTCalibSlope",      [("channel", int, True), ("value", float, True)],       type(None)), 
-    ("writePMTCalibOffset",     [("channel", int, True), ("value", float, True)],       type(None)), 
+    ("getPMTInfo",              [("channel", int, True)],                               dict),
+    ("setPMTSerialNumber",      [("channel", int, True), ("sn", str, True)],            type(None)),
+    ("setPMTHVSerialNumber",    [("channel", int, True), ("sn", str, True)],            type(None)),
+    ("setPMTFEBSerialNumber",   [("channel", int, True), ("sn", str, True)],            type(None)),
+    ("readPMTMonRegisters",     [("channel", int, True)],                               dict),
+    ("readPMTCalibRegisters",   [("channel", int, True)],                               dict),
+    ("writePMTCalibSlope",      [("channel", int, True), ("value", float, True)],       type(None)),
+    ("writePMTCalibOffset",     [("channel", int, True), ("value", float, True)],       type(None)),
     ("writePMTCalibDiscr",      [("channel", int, True), ("value", float, True)],       type(None))
 ]
 
@@ -209,13 +209,16 @@ FPGA_METHODS: list[tuple[str, ParamSpecDef, type]] = [
     ("getHousekeeping",             [],                                                                    dict),
     ("getFifoStatus",               [],                                                                    dict),
     ("getFirmwareInfo",             [],                                                                    dict[str, str]),
-    ("setDefaults",                 [],                                                                    type(None))
+    ("setDefaults",                 [],                                                                    type(None),                                             type(None)),
+
+    ("startAcquisition",            [("host", str, True)],                                                 str),
+    ("stopAcquisition",             [],                                                                    str)
 ]
 
 SENSORS_METHODS: list[tuple[str, list[ParamSpec], type]] = [
     ("read",                        [],                                                                    dict),
 ]
- 
+
 # One entry per JSON-RPC prefix. The dict key is both the wire-level prefix
 # (key + ".") and the attribute name exposed on the client
 # (e.g., client.febmgr, client.fpga, client.sensors).
@@ -237,8 +240,8 @@ def _pack_value(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [_pack_value(v) for v in value]
     return value
- 
- 
+
+
 def _build_params(python_name: str, params: list[ParamSpec], values: tuple) -> list:
     """Turn positional argument values into a JSON-RPC params list,
     validating required parameters and dropping trailing omitted optionals.
@@ -251,12 +254,12 @@ def _build_params(python_name: str, params: list[ParamSpec], values: tuple) -> l
             break  # trailing optional omitted: stop here, don't send later params
         packed.append(_pack_value(value))
     return packed
- 
- 
+
+
 def _make_method(python_name: str, wire_name: str, params: list[ParamSpec], return_type: type):
     """Create an actual client function for a remote method, with a real
     Python signature matching the parameter names in the spec.
- 
+
     python_name: attribute name used on the client (e.g. 'setPMTVoltageSet')
     wire_name:   method name actually sent in the JSON-RPC request
                  (e.g. 'febmgr.setPMTVoltageSet')
@@ -264,18 +267,18 @@ def _make_method(python_name: str, wire_name: str, params: list[ParamSpec], retu
     arg_defs = ", ".join(name if required else f"{name}=None" for name, _t, required in params)
     call_values = ", ".join(name for name, _t, _r in params)
     signature = f"self{', ' + arg_defs if arg_defs else ''}"
- 
+
     src = (
         f"def {python_name}({signature}):\n"
         f"    values = ({call_values}{',' if len(params) == 1 else ''})\n"
         f"    rpc_params = _build_params({python_name!r}, _params_spec, values)\n"
         f"    return self._call({wire_name!r}, rpc_params)\n"
     )
- 
+
     namespace: dict[str, Any] = {"_build_params": _build_params, "_params_spec": params}
     exec(src, namespace)  # noqa: S102 - controlled input, only used to build a typed signature
     method = namespace[python_name]
- 
+
     params_doc = "\n".join(
         f"    {name}: {getattr(t, '__name__', str(t))} ({'required' if required else 'optional'})"
         for name, t, required in params
@@ -284,7 +287,7 @@ def _make_method(python_name: str, wire_name: str, params: list[ParamSpec], retu
     method.__doc__ = f"Calls the remote method '{wire_name}'.\n\nParameters:\n{params_doc}\n\nReturns: {rtype_name}"
     method.__qualname__ = python_name
     return method
- 
+
 
 def build_client_class(
     spec: list[tuple[str, list[ParamSpec], type]],
@@ -293,11 +296,11 @@ def build_client_class(
     rpc_prefix: str = "",
 ) -> Type:
     """Dynamically build a class with one method per spec entry.
- 
+
     Works both for the top-level client (base=BaseRpcClient) and for
     lightweight namespace wrappers (base=RpcNamespace) — both expose
     a compatible self._call(method, params).
- 
+
     rpc_prefix: prepended to each method name only in the JSON-RPC request
                 (e.g. "febmgr." turns getStatus() into a call to
                 "febmgr.getStatus" on the wire), while the Python attribute
@@ -310,8 +313,8 @@ def build_client_class(
         wire_name = f"{rpc_prefix}{python_name}"
         namespace[python_name] = _make_method(python_name, wire_name, params, rtype)
     return type(class_name, (base,), namespace)
- 
- 
+
+
 def build_rpc_client(
     namespace_spec: dict[str, list[tuple[str, list[ParamSpec], type]]],
     base: Type[BaseRpcClient] = BaseRpcClient,
@@ -319,11 +322,11 @@ def build_rpc_client(
 ) -> Type[BaseRpcClient]:
     """Build a top-level client class exposing one sub-namespace attribute
     per JSON-RPC prefix, e.g.:
- 
+
         client.febmgr.getStatus()      -> wire method "febmgr.getStatus"
         client.fpga.reset()            -> wire method "fpga.reset"
         client.sensors.readTemperature() -> wire method "sensors.readTemperature"
- 
+
     This avoids name collisions between methods with the same name in
     different namespaces, and keeps the wire prefix explicit and visible
     in the calling code.
@@ -337,15 +340,15 @@ def build_rpc_client(
         )
         for ns_name, spec in namespace_spec.items()
     }
- 
+
     def __init__(self, url: str, timeout: float = 10.0, session: Optional[requests.Session] = None):
         base.__init__(self, url, timeout=timeout, session=session)
         for ns_name, ns_class in namespace_classes.items():
             setattr(self, ns_name, ns_class(self))
- 
+
     return type(class_name, (base,), {"__init__": __init__})
- 
- 
+
+
 MSSClient = build_rpc_client(NAMESPACE_SPEC)
- 
+
 

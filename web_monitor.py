@@ -343,7 +343,7 @@ def make_app(poller, host):
         ip = (data.get("ip_addr") or "")
         try:
             with poller._lock:
-                poller.rc.process_evbuilder_start(host=ip)
+                poller.client.fpga.startAcquisition(host=ip)
             return jsonify({"ok": True, "message": f"ACQ started on {ip}"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -352,7 +352,7 @@ def make_app(poller, host):
     def api_acq_stop():
         try:
             with poller._lock:
-                poller.rc.process_evbuilder_stop()
+                poller.client.fpga.stopAcquisition()
             return jsonify({"ok": True, "message": f"ACQ stopped"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
