@@ -60,4 +60,3 @@ class DeviceChannel(ABC):
 
     def __str__(self):
         return f"Board channel: {self.channel}, MB address: {self.address}, online: {self.online}"
-
