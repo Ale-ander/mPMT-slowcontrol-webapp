@@ -141,7 +141,7 @@ class Poller(threading.Thread):
                             "channel": ch,
                             "rate_hz": 0,
                             "rate_th": self.client.febmgr.getRateThreshold()[str(ch)],
-                            "ttp": self.client.febmgr.getTimeToPeak()[str(ch)]*3.7,
+                            "ttp": self.client.febmgr.getTimeToPeak()[str(ch)],
                             "voltage": '',
                             "voltage_set": '',
                             "current": '',
@@ -178,9 +178,9 @@ class Poller(threading.Thread):
 
                     sensor_row = {
                         "V_5V": sens['tla2024'][0]['value'],
-                        "V_3V3": sens['tla2024'][1]['value'],
+                        "V_3V3": sens['tla2024'][2]['value'],
 
-                        "I_poeA": sens['tla2024'][2]['value'],
+                        "I_poeA": sens['tla2024'][1]['value'],
                         "I_poeB": sens['tla2024'][3]['value'],
 
                         "P_poeA": sens['tla2024'][4]['value'],

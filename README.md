@@ -1,7 +1,7 @@
-# mPMT-data-plotter
-mPMT data plotter and slowcontrol webapp, based on [flask](https://flask.palletsprojects.com/en/stable/). 
+# mPMT-slowcontrol-webapp
+mPMT slowcontrol webapp, based on [flask](https://flask.palletsprojects.com/en/stable/). 
 
-Then, to start the server, launch:
+To start the server, launch:
 
 ```bash
 python web_monitor.py --host 192.168.16.67 --rc-port 9000 --interval 1.0 --port 5555

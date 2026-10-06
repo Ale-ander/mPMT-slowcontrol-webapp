@@ -6,8 +6,8 @@ from typing import Any, List, Optional, Type, Union
 
 import requests
 
-from .devices import DeviceType
-# from mpmt_mss.feb.ledchannel import TriggerSource
+from mpmt_mss.feb.devices import DeviceType
+from mpmt_mss.feb.ledchannel import TriggerSource
 
 # ---------------------------------------------------------------------------
 # Errors and exceptions
@@ -153,6 +153,7 @@ FEBMGR_METHODS: list[tuple[str, list[ParamSpec], type]] = [
     ("setPMTModbusAddressForced", [("addr", int, True)],                                type(None)),
     ("setLEDModbusAddressForced", [("addr", int, True)],                                type(None)),
     ("alignModbusAddresses",    [("channels", Optional[List[int]], False), ("timeout", Optional[float], False), ("poll_interval", Optional[float], False), ("reconfigure", Optional[bool], False)], dict),
+    ("reconfigureFromFpga",     [],                                                     type(None)),
     ("getRateChannel",          [("channel", int, True)],                               int),
     ("getRateAll",              [],                                                     dict[str, int]),
 
@@ -214,6 +215,7 @@ FEBMGR_METHODS: list[tuple[str, list[ParamSpec], type]] = [
     ("powerLEDOn",              [("channel", int, True)],                               type(None)),
     ("powerLEDOff",             [("channel", int, True)],                               type(None)),
     ("setLEDTrigger",           [("channel", int, True), ("value", bool, True)],        type(None)),
+    ("setLEDTriggerSource",     [("channel", int, True), ("source", TriggerSource, True)],  type(None)),
     ("setLEDBias",              [("channel", int, True), ("value", bool, True)],        type(None)),
     ("setLEDBiasVoltage",       [("channel", int, True), ("value", float, True)],       type(None)),
     ("setLEDChannels",          [("channel", int, True), ("channels", List[int], True), ("append", Optional[bool], False)], type(None)),
@@ -221,6 +223,8 @@ FEBMGR_METHODS: list[tuple[str, list[ParamSpec], type]] = [
     # Run preparation
     ("prepareForRun",           [("timeout", Optional[float], False), ("channels", Optional[List[int]], False)], dict),
     ("getHVReadyChannels",      [("channels", Optional[List[int]], False)],             dict),
+
+    ("flashFirmware",           [("channel", int, True), ("firmware_path", str, True)], str),
 ]
 
 FPGA_METHODS: list[tuple[str, ParamSpecDef, type]] = [
@@ -238,6 +242,8 @@ FPGA_METHODS: list[tuple[str, ParamSpecDef, type]] = [
     ("getTr32Counter",              [],                                                                    int),
     ("enableTr32Channel",           [],                                                                    type(None)),
     ("disableTr32Channel",          [],                                                                    type(None)),
+    ("enableTr32Pulser",            [],                                                                    type(None)),
+    ("disableTr32Pulser",           [],                                                                    type(None)),
     ("requestAdcCalibration",       [],                                                                    type(None)),
     ("setSpiClock",                 [("selection", int, True)],                                            type(None)),
     ("getSpiClock",                 [],                                                                    float),
@@ -251,8 +257,10 @@ FPGA_METHODS: list[tuple[str, ParamSpecDef, type]] = [
     ("getFifoStatus",               [],                                                                    dict),
     ("getFirmwareInfo",             [],                                                                    dict[str, str]),
     ("setDefaults",                 [],                                                                    type(None)),
+    ("setCableLen",                 [("length", int, True)],                                               type(None)),
+    ("getCableLen",                 [],                                                                    int),
 
-    ("startAcquisition",            [("host", str, True), ("port", int, False)],                           str),
+    ("startAcquisition",            [("host", str, True), ("port", int, False), ("mPMTID", int, False)],   str),
     ("stopAcquisition",             [],                                                                    str)
 ]
 
